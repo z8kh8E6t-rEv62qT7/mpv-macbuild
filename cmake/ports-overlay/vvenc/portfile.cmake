@@ -29,6 +29,20 @@ vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/vvenc)
 
 vcpkg_copy_pdbs()
 vcpkg_fixup_pkgconfig()
+foreach(pkgconfig_file IN ITEMS
+    "${CURRENT_PACKAGES_DIR}/lib/pkgconfig/libvvenc.pc"
+    "${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/libvvenc.pc"
+)
+    if(NOT EXISTS "${pkgconfig_file}")
+        message(FATAL_ERROR "Expected vvenc pkg-config file is missing: ${pkgconfig_file}")
+    endif()
+    file(READ "${pkgconfig_file}" pkgconfig_contents)
+    string(FIND "${pkgconfig_contents}" "-lstdc++" stdlib_position)
+    if(stdlib_position EQUAL -1)
+        message(FATAL_ERROR "Expected vvenc pkg-config file to reference libstdc++: ${pkgconfig_file}")
+    endif()
+    vcpkg_replace_string("${pkgconfig_file}" "-lstdc++" "-lc++")
+endforeach()
 
 if(BUILD_TOOLS)
     vcpkg_copy_tools(TOOL_NAMES vvencFFapp vvencapp AUTO_CLEAN)
