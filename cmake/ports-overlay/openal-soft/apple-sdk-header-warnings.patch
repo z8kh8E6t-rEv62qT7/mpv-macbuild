@@ -1,0 +1,15 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -396,6 +396,11 @@ if(NOT MSVC)
+     if(ALSOFT_WERROR)
+         set(C_FLAGS ${C_FLAGS} -Werror)
++    elseif(APPLE)
++        set(C_FLAGS ${C_FLAGS} -Werror=format-security
++            $<$<COMPILE_LANGUAGE:CXX>:-Wno-elaborated-enum-base>
++            $<$<COMPILE_LANGUAGE:C>:-Werror=implicit -Werror=incompatible-pointer-types
++                -Werror=int-conversion>)
+     else()
+         set(C_FLAGS ${C_FLAGS} -Werror=undef -Werror=format-security
+             $<$<COMPILE_LANGUAGE:C>:-Werror=implicit -Werror=incompatible-pointer-types
+                 -Werror=int-conversion>)

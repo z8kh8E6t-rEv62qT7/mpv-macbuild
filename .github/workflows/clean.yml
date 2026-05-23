@@ -1,22 +1,20 @@
 name: Clean workflows
+
 on:
-  #schedule:
-  #  - cron: '0 0 1 * *'
-# Run monthly, at 00:00 on the 1st day of month.
   workflow_dispatch:
-    inputs:
-      days:
-        description: 'Number of days.'
-        required: true
-        default: 30
+
+permissions:
+  actions: write
+  contents: read
+
 jobs:
-  del_runs:
+  delete-runs:
     runs-on: ubuntu-latest
     steps:
-      - name: Delete workflow runs
-        uses: Mattraks/delete-workflow-runs@main
+      - name: Delete all workflow runs
+        uses: Mattraks/delete-workflow-runs@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           repository: ${{ github.repository }}
-          retain_days: ${{ github.event.inputs.days }}
+          retain_days: 0
           keep_minimum_runs: 0

@@ -1,689 +1,311 @@
-name: MPV
-run-name: "${{ format('{0} ({1})', github.workflow, inputs.compiler) }}"
+name: MPV macOS
+run-name: "MPV macOS (mpv=${{ github.event.inputs.mpv_ref || 'latest' }}, ffmpeg=${{ github.event.inputs.ffmpeg_ref || 'latest' }})"
 
-permissions:
-  actions: write
-  attestations: write
-  contents: write
-
-on: 
-#  schedule:
-#    - cron: '0 8 * * *'
+on:
+  push:
+    branches:
+      - master
   workflow_dispatch:
     inputs:
-      winbuild_repo:
-        required: true
-        default: 'dyphire/mpv-winbuild-cmake'
-      winbuild_ref:
-        required: true
-        default: 'patch'
-      build_target:
-        description: "Build target"
+      mpv_ref:
+        description: "mpv tag, branch, or commit to build. Use latest for the newest release."
         required: false
-        default: "all-64bit"
-        type: choice
-        options:
-        - 32bit
-        - 64bit
-        - 64bit-v3
-        - all-64bit
-        - all
-      compiler:
+        default: latest
+      ffmpeg_ref:
+        description: "FFmpeg tag, branch, or commit to build. Use latest for the newest release tag."
         required: false
-        default: "clang"
-        type: choice
-        options:
-        - gcc
-        - clang
-      needclean:
-        description: 'Delete cache and completely rebuild erverything'
-        required: false
-        default: false
-        type: boolean
-      no_save_cache:
-        description: "Don't save caches after success build"
-        required: false
-        default: false
-        type: boolean
-      release:
-        description: "Publish a release"
-        required: false
-        default: true
-        type: boolean
-      command:
-        description: 'input command you want to run before build'
-        required: false
+        default: latest
 
-# Workflow level env does not work properly in all fields.
-# https://github.com/actions/runner/issues/480
-env:
-  winbuildrepo: 'dyphire/mpv-winbuild-cmake'
-  winbuildref: 'patch'
-  mpvowner: 'mpv-player'
-  mpvref: 'master'
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
 
 jobs:
-  # https://github.com/actions/runner/issues/480#issuecomment-1055373623
   params:
+    name: Resolve build parameters
     runs-on: ubuntu-latest
     outputs:
-      sha: ${{ steps.script.outputs.sha }}
-      params: ${{ steps.env-vars.outputs.params }}
-      matrix: ${{ steps.script.outputs.matrix }}
+      mpv_ref: ${{ steps.resolve.outputs.mpv_ref }}
+      safe_mpv_ref: ${{ steps.resolve.outputs.safe_mpv_ref }}
+      ffmpeg_ref: ${{ steps.resolve.outputs.ffmpeg_ref }}
+      safe_ffmpeg_ref: ${{ steps.resolve.outputs.safe_ffmpeg_ref }}
+      nuget_cache_mode: ${{ steps.nuget-cache-mode.outputs.mode }}
+      nuget_cache_reason: ${{ steps.nuget-cache-mode.outputs.reason }}
+      nuget_feed_url: ${{ steps.nuget-cache-mode.outputs.feed_url }}
+      nuget_source_name: ${{ steps.nuget-cache-mode.outputs.source_name }}
+      release_enabled: ${{ steps.nuget-cache-mode.outputs.release_enabled }}
+      nuget_write_enabled: ${{ steps.nuget-cache-mode.outputs.nuget_write_enabled }}
+      release_tag: ${{ steps.release-metadata.outputs.tag }}
+      release_title: ${{ steps.release-metadata.outputs.title }}
     steps:
-      - name: Set mpv_owner
-        run: |
-          if [[ "${{ inputs.winbuild_repo }}" == "${{ env.winbuildrepo }}" && "${{ inputs.winbuild_ref }}" == "${{ env.winbuildref }}" ]] ; then
-            echo "mpv_owner=${{ env.mpvowner }}" >> $GITHUB_ENV
-          else
-            echo "mpv_owner=mpv-player" >> $GITHUB_ENV
-          fi
-      - name: Set mpv_ref
-        run: |
-          if [[ "${{ inputs.winbuild_repo }}" == "${{ env.winbuildrepo }}" && "${{ inputs.winbuild_ref }}" == "${{ env.winbuildref }}" ]] ; then
-            echo "mpv_ref=${{ env.mpvref }}" >> $GITHUB_ENV
-          else
-            echo "mpv_ref=master" >> $GITHUB_ENV
-          fi
-      - id: script
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const commit = await github.rest.repos.getCommit({
-              owner: '${{ env.mpv_owner }}',
-              repo: 'mpv',
-              ref: '${{ env.mpv_ref }}'
-            })
-            core.setOutput('sha', String(commit.data.sha))
-            
-            let matrix = {};
-            let build_target = "${{ inputs.build_target }}"
-            switch ( build_target ) {
-              case "32bit":
-                matrix.bit = ["32"];
-                break;
-              case "64bit":
-                matrix.bit = ["64"];
-                break;
-              case "64bit-v3":
-                matrix.bit = ["64-v3"];
-                break;
-              case "all-64bit":
-                matrix.bit = ["64","64-v3"];
-                break;
-              case "all":
-                matrix.bit = ["32","64","64-v3"];
-                break;
-              default:
-                matrix.bit = ["64","64-v3"];
-                break;
-            }
-            core.setOutput("matrix",JSON.stringify(matrix));
-      - id: env-vars
-        name: Output environment variables
-        run: echo "params=$(echo $(jq -n 'env'))" >> $GITHUB_OUTPUT
+      - name: Checkout builder repository
+        uses: actions/checkout@v6
 
-  build_mpv:
-    name: Build MPV
+      - name: Resolve NuGet cache mode
+        id: nuget-cache-mode
+        env:
+          HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message || '' }}
+        run: bash .github/scripts/resolve-nuget-cache-mode.sh
+
+      - name: Resolve source refs
+        id: resolve
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_MPV_REF: ${{ github.event.inputs.mpv_ref || 'latest' }}
+          REQUESTED_FFMPEG_REF: ${{ github.event.inputs.ffmpeg_ref || 'latest' }}
+        run: bash .github/scripts/resolve-refs.sh
+
+      - name: Compute release metadata
+        id: release-metadata
+        run: |
+          tag="mpv-${{ steps.resolve.outputs.safe_mpv_ref }}-ffmpeg-${{ steps.resolve.outputs.safe_ffmpeg_ref }}-macos15-arm64"
+          title="mpv ${{ steps.resolve.outputs.mpv_ref }} + FFmpeg ${{ steps.resolve.outputs.ffmpeg_ref }} (macOS 15 arm64)"
+          printf 'tag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
+          printf 'title=%s\n' "$title" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build macOS arm64 app
+    runs-on: macos-15
     needs: params
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/archlinux/archlinux:base-devel
-    continue-on-error: true
-    strategy:
-      matrix: ${{ fromJson(needs.params.outputs.matrix) }}
-
+    permissions:
+      contents: read
+      packages: write
+    env:
+      NUGET_CACHE_MODE: ${{ needs.params.outputs.nuget_cache_mode }}
+      NUGET_CACHE_REASON: ${{ needs.params.outputs.nuget_cache_reason }}
+      NUGET_FEED_URL: ${{ needs.params.outputs.nuget_feed_url }}
+      NUGET_SOURCE_NAME: ${{ needs.params.outputs.nuget_source_name }}
+    outputs:
+      source_deps_succeeded: ${{ steps.build-outputs.outputs.source_deps_succeeded }}
+      artifact_name: ${{ steps.build-outputs.outputs.artifact_name }}
+      artifact_path: ${{ steps.build-outputs.outputs.artifact_path }}
+      ffmpeg_artifact_name: ${{ steps.build-outputs.outputs.ffmpeg_artifact_name }}
+      ffmpeg_artifact_path: ${{ steps.build-outputs.outputs.ffmpeg_artifact_path }}
     steps:
-      - name: Install Dependencies
-        run: |
-          sudo echo -e "[multilib]\nInclude = /etc/pacman.d/mirrorlist" | sudo tee -a /etc/pacman.conf >/dev/null
-          sudo pacman-key --init
-          sudo pacman-key --populate archlinux
-          sudo pacman -Syu --noconfirm
-          sudo pacman -S --noconfirm --needed git ninja cmake meson clang lld libc++ unzip ragel yasm nasm gperf rst2pdf lib32-gcc-libs lib32-glib2 python-cairo curl wget mimalloc ccache python-pip 7zip shaderc
-          sudo python -m pip install --break-system-packages roman
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git config --global pull.rebase true
-          git config --global rebase.autoStash true
-          git config --global fetch.prune true
-      - uses: actions/checkout@v4
-      - name: Prepare
-        run: |
-          echo "sha=${{ needs.params.outputs.sha }}" >> $GITHUB_ENV
-          echo "winbuild_repo=${{ inputs.winbuild_repo }}" >> $GITHUB_ENV
-          echo "winbuild_ref=${{ inputs.winbuild_ref }}" >> $GITHUB_ENV
-          echo "mpv_owner=${{ fromJson(needs.params.outputs.params).mpv_owner }}" >> $GITHUB_ENV
-          echo "mpv_ref=${{ fromJson(needs.params.outputs.params).mpv_ref }}" >> $GITHUB_ENV
-          echo "short_time=$(date "+%Y-%m-%d")" >> $GITHUB_ENV
-          echo "cache_suffix=$(date "+%Y-%m-%d")-${{ github.run_id }}-${{ github.run_attempt }}" >> $GITHUB_ENV
-      - name: Checkout toolchain
-        uses: actions/checkout@v4
+      - name: Checkout builder repository
+        uses: actions/checkout@v6
         with:
-          repository: ${{ inputs.winbuild_repo }}
-          ref: ${{ inputs.winbuild_ref }}
-          path: mpv-winbuild-cmake
+          path: builder
+
+      - name: Checkout mpv
+        uses: actions/checkout@v6
+        with:
+          repository: mpv-player/mpv
+          ref: ${{ needs.params.outputs.mpv_ref }}
+          path: mpv
           fetch-depth: 0
-      - name: Ccache
+
+      - name: Prepare macOS build host
+        run: bash builder/.github/scripts/prepare-macos.sh
+
+      - name: Restore vcpkg binary cache
+        id: vcpkg-cache-restore
+        uses: actions/cache/restore@v5
+        with:
+          path: ${{ runner.temp }}/vcpkg-binary-cache
+          key: vcpkg-${{ runner.os }}-${{ runner.arch }}-macos15-static-m4-${{ hashFiles('builder/cmake/CMakeLists.txt', 'builder/cmake/ports-overlay/**', 'builder/cmake/triplets/**', 'builder/cmake/toolchains/**', 'builder/.github/scripts/prepare-macos.sh') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            vcpkg-${{ runner.os }}-${{ runner.arch }}-macos15-static-m4-${{ hashFiles('builder/cmake/CMakeLists.txt', 'builder/cmake/ports-overlay/**', 'builder/cmake/triplets/**', 'builder/cmake/toolchains/**', 'builder/.github/scripts/prepare-macos.sh') }}-
+            vcpkg-${{ runner.os }}-${{ runner.arch }}-macos15-static-m4-
+
+      - name: Build source
+        id: source
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RESOLVED_FFMPEG_REF: ${{ needs.params.outputs.ffmpeg_ref }}
+        run: bash builder/.github/scripts/build-source-deps.sh
+
+      - name: Print source build logs
+        if: ${{ failure() && steps.source.outcome == 'failure' }}
         run: |
-          sed -i '/ccache_conf.in/d'  mpv-winbuild-cmake/CMakeLists.txt
-          sed -i '/ccache/d' mpv-winbuild-cmake/exec.in
+          bash builder/.github/scripts/print-superbuild-log.sh vcpkg-tool
+          bash builder/.github/scripts/print-superbuild-log.sh vcpkg-static-ports
+          bash builder/.github/scripts/print-superbuild-log.sh custom-static-deps
 
-      - name: Lookup Toolchain Cache
-        id: lookup_toolchain
-        uses: actions/cache/restore@v4.2.1
+      - name: Save vcpkg binary cache
+        if: ${{ always() && steps.source.outcome != 'skipped' }}
+        uses: actions/cache/save@v5
         with:
-          path: ${{ github.workspace }}/mpv-winbuild-cmake/build${{ matrix.bit }}
-          key: toolchain-${{ inputs.compiler }}-build${{ matrix.bit }}-${{ env.cache_suffix }}
-          restore-keys: |
-            toolchain-${{ inputs.compiler }}-build${{ matrix.bit }}-
-          lookup-only: true
-      - name: Lookup Build Cache
-        id: lookup_build
-        uses: actions/cache/restore@v4.2.1
-        with:
-          path: ${{ github.workspace }}/mpv-winbuild-cmake/build${{ matrix.bit }}
-          key: ${{ inputs.compiler }}-build${{ matrix.bit }}-${{ env.cache_suffix }}
-          restore-keys: |
-            ${{ inputs.compiler }}-build${{ matrix.bit }}-
-          lookup-only: true
-          
-      - name: Generate cache key
-        id: generate_key
-        uses: actions/github-script@v7
-        with:
-          script: |
-            let toolchain_restore_key="${{ steps.lookup_toolchain.outputs.cache-matched-key }}";
-            let build_restore_key="${{ steps.lookup_build.outputs.cache-matched-key }}";
-            let build_save_key="${{ inputs.compiler }}-build${{ matrix.bit }}-${{ env.cache_suffix }}";
-            let key_suffix= "${{ env.cache_suffix }}"
-            let restore_suffix= ""; // if only want to match primaryKey, set a value which make restore-keys can't hit
-            
-            // If toolchain cache exist, compare version of toolchain and build
-            if (toolchain_restore_key) {
-              const toolchain_version = toolchain_restore_key.split("-build${{ matrix.bit }}-").at(-1);
-              core.exportVariable( `toolchain_version`, toolchain_version );
+          path: ${{ runner.temp }}/vcpkg-binary-cache
+          key: ${{ steps.vcpkg-cache-restore.outputs.cache-primary-key }}
 
-              build_save_key += `(${toolchain_version})`;
-              // If build cache version is not same as toolchain or needclean=true, don't restore build cache.
-              // Else, don't restore toolchain cache and use build cache.
-              if ( !build_restore_key.includes(toolchain_version) || ${{ inputs.needclean == true }} ) {
-                build_restore_key="";
-                key_suffix=toolchain_version;  // only use same version cache as toolchain-version
-                restore_suffix="-only-use-primaryKey-";  // make restore-keys can't hit
-              } else {
-                toolchain_restore_key="";
-              }
-            }
-            core.exportVariable( `toolchain_restore_key`, toolchain_restore_key );
-            core.exportVariable( `build_restore_key`, build_restore_key );
-            core.exportVariable( `build_save_key`, build_save_key );
-            core.exportVariable( `key_suffix`, key_suffix );
-            core.exportVariable( `restore_suffix`, restore_suffix );
+      - name: Build FFmpeg
+        id: ffmpeg
+        run: bash builder/.github/scripts/build-ffmpeg.sh
 
-      - name: Restore clang sysroot cache
-        if: ${{ inputs.compiler =='clang' && inputs.no_save_cache != true }}
-        uses: actions/cache/restore@v4.2.1
-        with: 
-          path: ${{ github.workspace }}/mpv-winbuild-cmake/clang_root
-          key: ${{ matrix.bit }}-clang_root-${{ env.key_suffix }}
-          restore-keys: |
-            ${{ matrix.bit }}-clang_root-${{ env.restore_suffix }}
+      - name: Print FFmpeg build logs
+        if: ${{ failure() && steps.ffmpeg.outcome == 'failure' }}
+        run: bash builder/.github/scripts/print-superbuild-log.sh ffmpeg-static
 
-      - name: Restore Rust Cache
-        uses: actions/cache/restore@v4.2.1
-        id: cache_rust
-        with:
-          path: ${{ github.workspace }}/mpv-winbuild-cmake/install_rustup
-          key: rust-${{ env.key_suffix }}
-          restore-keys: |
-            rust-${{ env.restore_suffix }}
-      - name: Restore Source Cache
-        uses: actions/cache/restore@v4.2.1
-        with:
-          path: ${{ github.workspace }}/mpv-winbuild-cmake/src_packages
-          key: source-${{ env.key_suffix }}
-          restore-keys: |
-            source-${{ env.restore_suffix }}
-      - name: Restore Toolchain Cache
-        if: ${{ env.toolchain_restore_key != '' }}
-        uses: actions/cache/restore@v4.2.1
-        with:
-          path: ${{ github.workspace }}/mpv-winbuild-cmake/build${{ matrix.bit }}
-          key: ${{ env.toolchain_restore_key }}
-      - name: Restore Build Cache
-        if: ${{ inputs.needclean != true && env.build_restore_key != '' }}
-        uses: actions/cache/restore@v4.2.1
-        with:
-          path: ${{ github.workspace }}/mpv-winbuild-cmake/build${{ matrix.bit }}
-          key: ${{ env.build_restore_key }}
-      - name: Set up ccache
-        uses: Chocobo1/setup-ccache-action@v1
-        with:
-          update_packager_index: false
-          install_ccache: false
-          override_cache_key: ccache-build${{ matrix.bit }}-${{ inputs.compiler }}
-          ccache_options: |
-            cache_dir=${{ github.workspace }}/.ccache
-            max_size=500M
-            sloppiness=locale,time_macros
-            compiler_check=none
+      - name: Package FFmpeg artifact
+        id: ffmpeg_artifact
+        env:
+          SAFE_FFMPEG_REF: ${{ needs.params.outputs.safe_ffmpeg_ref }}
+        run: bash builder/.github/scripts/package-ffmpeg-artifact.sh
 
-      - name: Running custom command
-        if: ${{ inputs.command != '' }}
-        shell: bash
-        continue-on-error: true
-        run: |
-          cd mpv-winbuild-cmake
-          bit="${{ matrix.bit }}"
-          compiler="${{ inputs.compiler }}"
-          gitdir=$(pwd)
-          clang_root=$(pwd)/clang_root
-          buildroot=$(pwd)
-          srcdir=$(pwd)/src_packages
-          builddir=$buildroot/build$bit
-          if [ $bit == "32" ]; then
-              arch="i686"
-          elif [ $bit == "64" ]; then
-              arch="x86_64"
-          elif [ $bit == "64-v3" ]; then
-              arch="x86_64"
-              gcc_arch=-DGCC_ARCH=x86-64-v3
-              x86_64_level=-v3
-          fi
-          retry-tool() {
-            local RETRY_COUNTER=0
-            local MAX_RETRY=3
-            while [[ $RETRY_COUNTER -lt $MAX_RETRY ]]; do
-                $@ && break || sleep 2
-                RETRY_COUNTER=$(( $RETRY_COUNTER + 1 ))
-                echo "Retry $RETRY_COUNTER..."
-            done
-            if [[ $RETRY_COUNTER -ge $MAX_RETRY ]]; then
-                echo "Max retry count exceeded."
-            fi
-          }
-          set -x
-          ${{ inputs.command }}
-      - name: Build
+      - name: Upload FFmpeg install-prefix artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.ffmpeg_artifact.outputs.ffmpeg_name }}
+          path: ${{ steps.ffmpeg_artifact.outputs.ffmpeg_path }}
+          if-no-files-found: error
+
+      - name: Smoke test FFmpeg install-prefix artifact
+        id: ffmpeg-smoke
+        run: bash builder/.github/scripts/smoke-ffmpeg-artifact.sh
+
+      - name: Audit FFmpeg runtime dependencies
+        id: ffmpeg-runtime-audit
+        run: bash builder/.github/scripts/audit-ffmpeg-runtime.sh
+
+      - name: Configure mpv with Meson
+        id: configure
+        env:
+          SWIFT_FLAGS: ""
+        run: bash builder/.github/scripts/configure-mpv.sh
+
+      - name: Print Meson configure log
+        if: ${{ failure() && steps.configure.outcome == 'failure' }}
+        run: bash builder/.github/scripts/print-meson-log.sh configure
+
+      - name: Build with Meson
         id: build
-        shell: bash
+        run: bash builder/.github/scripts/build-test-bundle.sh build
+
+      - name: Print Meson build log
+        if: ${{ failure() && steps.build.outcome == 'failure' }}
+        run: bash builder/.github/scripts/print-meson-log.sh build
+
+      - name: Run Meson tests
+        id: tests
+        run: bash builder/.github/scripts/build-test-bundle.sh test
+
+      - name: Print Meson test log
+        if: ${{ failure() && steps.tests.outcome == 'failure' }}
+        run: bash builder/.github/scripts/print-meson-log.sh test
+
+      - name: Create app bundle
+        id: bundle
+        run: bash builder/.github/scripts/build-test-bundle.sh bundle
+
+      - name: Package mpv.app artifact
+        id: artifact
+        env:
+          SAFE_MPV_REF: ${{ needs.params.outputs.safe_mpv_ref }}
+          SAFE_FFMPEG_REF: ${{ needs.params.outputs.safe_ffmpeg_ref }}
+        run: bash builder/.github/scripts/package-artifact.sh
+
+      - name: Upload mpv.app artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.artifact.outputs.name }}
+          path: ${{ steps.artifact.outputs.path }}
+          if-no-files-found: error
+
+      - name: Audit app bundle dependencies
+        id: bundle-audit
+        run: bash builder/.github/scripts/audit-bundle.sh
+
+      - name: Audit retained packages and source-built features
+        id: audit
+        env:
+          RESOLVED_MPV_REF: ${{ needs.params.outputs.mpv_ref }}
+          RESOLVED_FFMPEG_REF: ${{ needs.params.outputs.ffmpeg_ref }}
+        run: bash builder/.github/scripts/audit-packages.sh
+
+      - name: Upload package audit
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: package-audit-${{ needs.params.outputs.safe_mpv_ref }}-${{ needs.params.outputs.safe_ffmpeg_ref }}
+          path: audit/package-audit.md
+          if-no-files-found: ignore
+
+      - name: Print CI diagnostics
+        if: ${{ failure() }}
+        run: bash builder/.github/scripts/print-ci-diagnostics.sh
+
+      - name: Upload full audit
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: full-audit-${{ needs.params.outputs.safe_mpv_ref }}-${{ needs.params.outputs.safe_ffmpeg_ref }}
+          path: audit
+          if-no-files-found: ignore
+
+      - name: Record build outputs
+        id: build-outputs
+        if: ${{ always() }}
         run: |
-          chmod +x build.sh
-          cd mpv-winbuild-cmake
-          if [[ "$(ls -A ../patch/*.patch)" ]]; then
-            for patch in ../patch/*.patch ; do
-              git am --3way "$patch" || git am --abort
-            done
+          source_deps_succeeded=false
+          if [[ "${{ steps.source.outcome }}" == "success" ]]; then
+            source_deps_succeeded=true
           fi
-          bash ../build.sh -t '${{ matrix.bit }}' -c '${{ inputs.compiler }}'
-      - name: Collect logs
-        if: ${{ always() }}
-        run: |
-          sudo 7z a logs.7z $(find mpv-winbuild-cmake/build${{ matrix.bit }} -type f -iname "*-*.log" -or -wholename "*/ffbuild/config.log")
-      - name: upload logs
-        uses: actions/upload-artifact@v4
-        if: ${{ always() }}
-        with:
-          name: ${{ matrix.bit }}_logs
-          path: logs.7z
+          printf 'source_deps_succeeded=%s\n' "$source_deps_succeeded" >> "$GITHUB_OUTPUT"
+          printf 'artifact_name=%s\n' "${{ steps.artifact.outputs.name }}" >> "$GITHUB_OUTPUT"
+          printf 'artifact_path=%s\n' "${{ steps.artifact.outputs.path }}" >> "$GITHUB_OUTPUT"
+          printf 'ffmpeg_artifact_name=%s\n' "${{ steps.ffmpeg_artifact.outputs.ffmpeg_name }}" >> "$GITHUB_OUTPUT"
+          printf 'ffmpeg_artifact_path=%s\n' "${{ steps.ffmpeg_artifact.outputs.ffmpeg_path }}" >> "$GITHUB_OUTPUT"
 
-      - name: "Get artifacts' name and path"
-        id: get_files
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const path = require('path');
-            const types = [ "mpv-dev", "mpv"];
-            let arch="";
-            switch ( "${{ matrix.bit }}" ) {
-              case "32":
-                arch = "i686";
-                break;
-              case "64":
-                arch = "x86_64";
-                break;
-              case "64-v3":
-                arch = "x86_64-v3";
-                break;
-            }
-            for (let type of types) {
-              const globber = await glob.create(`mpv-winbuild-cmake/release/${type}-${arch}-*.7z`);
-              const files = await globber.glob();
-              if ( files.length > 0 ) {
-                const file = files[0];
-                core.exportVariable( `${type}_name`, path.basename(file) );
-                core.exportVariable( `${type}_path`, file );
-              }
-            }
-
-            let { stdout: ffmpeg_hash } = await exec.getExecOutput("git -C mpv-winbuild-cmake/src_packages/ffmpeg rev-parse --short HEAD");
-            ffmpeg_hash = ffmpeg_hash.trim();
-            const ffmpeg_name = `ffmpeg-${arch}-git-${ffmpeg_hash}`;
-            core.exportVariable( 'ffmpeg_name', ffmpeg_name );
-            const globber = await glob.create(`./mpv-winbuild-cmake/build${{ matrix.bit }}/**/ffmpeg.exe`);
-            const ffmpeg_path = (await globber.glob())[0]
-            await exec.exec(`7z a -m0=lzma2 -mx=9 -ms=on mpv-winbuild-cmake/release/${ffmpeg_name}.7z ${ffmpeg_path}`)
-
-      - name: Upload mpv-dev
-        uses: actions/upload-artifact@v4
-        if: ${{ env.mpv-dev_name && env.mpv-dev_path }}
-        with:
-          name: ${{ env.mpv-dev_name }}
-          path: ${{ env.mpv-dev_path }}
-      - name: Upload mpv
-        uses: actions/upload-artifact@v4
-        if: ${{ env.mpv_name && env.mpv_path }}
-        with:
-          name: ${{ env.mpv_name }}
-          path: ${{ env.mpv_path }}
-      - name: Upload ffmpeg
-        uses: actions/upload-artifact@v4
-        if: ${{ env.ffmpeg_name }}
-        with:
-          name: ${{ env.ffmpeg_name }}
-          path: mpv-winbuild-cmake/release/${{ env.ffmpeg_name }}.7z
-
-      - name: Save clang sysroot cache
-        if: ${{ inputs.compiler =='clang' }}
-        uses: actions/cache/save@v4.2.1
-        with: 
-          path: ${{ github.workspace }}/mpv-winbuild-cmake/clang_root
-          key: ${{ matrix.bit }}-clang_root-${{ env.cache_suffix }}
-
-      - name: Save Sources Cache
-        if: ${{ inputs.no_save_cache != true }}
-        uses: actions/cache/save@v4.2.1
-        with:
-          path: ${{ github.workspace }}/mpv-winbuild-cmake/src_packages
-          key: source-${{ env.cache_suffix }}
-      - name: Save Rust Cache
-        if: ${{ inputs.no_save_cache != true }}
-        uses: actions/cache/save@v4.2.1
-        with:
-          path: ${{ github.workspace }}/mpv-winbuild-cmake/install_rustup
-          key: rust-${{ env.cache_suffix }}
-      - name: Save Build Cache
-        if: ${{ inputs.no_save_cache != true }}
-        uses: actions/cache/save@v4.2.1
-        with:
-          path: ${{ github.workspace }}/mpv-winbuild-cmake/build${{ matrix.bit }}
-          key: ${{ env.build_save_key }}
-
-      - name: "Job summary"
-        uses: actions/github-script@v7
-        continue-on-error: true
-        if: ${{ always() }}
-        with:
-          script: |
-            const path = require('path');
-            const { readdirSync,existsSync } = require('fs');
-            const myExec = async (command, args = null) => await exec.getExecOutput(command,args,{silent: true}).then(result => result.stdout.trim()).catch(err => '');
-            
-            const upstreamDir = path.resolve("mpv-winbuild-cmake");
-            const workdir = path.resolve(upstreamDir,"src_packages");
-            const isGitSync = dirname => existsSync(path.join(workdir, dirname, '.git'));
-            
-            const getGithubUrl = (hash,remote) => remote.replace(/\.git$/,"") + `/commit/${hash}`;
-            const getGitlabUrl = (hash,remote) => remote.replace(/\.git$/,"") + `/-/commit/${hash}`;
-            const getBitbucketUrl = (hash,remote) => remote.replace(/\.git$/,"") + `/commits/${hash}`;
-            const getGoogleSourceUrl = (hash,remote) => remote + `/+/${hash}`;            
-            const gethGitVideolanUrl = (hash,remote) => remote.replace(/\/git\//,"/?p=") + `;a=commit;h=${hash}`;
-            const getCgitUrl = (hash,remote) => remote + `/commit/?id=${hash}`;
-            function getCommitUrl(hash,remote) {
-                let url = "";
-                switch (true) {
-                  case /github\.com/.test(remote):
-                    url = getGithubUrl(hash,remote);
-                    break;
-                  case /(gitlab\.com|code\.videolan\.org|gitlab\.gnome\.org)/.test(remote):
-                    url = getGitlabUrl(hash,remote);
-                    break;
-                  case /bitbucket\.org/.test(remote):
-                    url = getBitbucketUrl(hash,remote);
-                    break;
-                  case /googlesource\.com/.test(remote):
-                    url = getGoogleSourceUrl(hash,remote);
-                    break;
-                  case /git\.videolan\.org/.test(remote):
-                    url = gethGitVideolanUrl(hash,remote);
-                    break;
-                  case /git\.libssh\.org/.test(remote):
-                    url = getCgitUrl(hash,remote);
-                    break;
-                  default:
-                    url = remote;
-                    break;
-                }
-                return url;
-            }
-            async function repo_info(dir){
-              let local_hash = await myExec(`git -C ${dir} rev-parse --short=7 HEAD`);
-              let remote_branch = await myExec(`git -C ${dir} rev-parse --abbrev-ref HEAD@{upstream}`);
-              let remote_hash = await myExec(`git -C ${dir} rev-parse ${remote_branch}`);
-              let status = await myExec(`git -C ${dir} status -sb`).then(s => s.split("\n",1)[0].replace(/^## */,""));
-              let remote = await myExec(`git -C ${dir} config --get remote.origin.url`);
-              return [local_hash, remote_hash, status, remote]
-            }
-            
-            async function generateGitInfoTable(targetDir){
-              const dirs = readdirSync(targetDir, { withFileTypes: true })
-                .filter(dirent => dirent.isDirectory() && isGitSync(dirent.name) )
-                .map(dirent => path.join(targetDir, dirent.name));
-              let info_table = [[{data: 'Package', header: true}, {data: 'Local commit', header: true}, {data: 'Status', header: true}, {data: 'Remote commit', header: true}]];
-              for (let dir of dirs) {
-                [local_hash, remote_hash, status, remote] = await repo_info(dir)
-                let url = getCommitUrl(remote_hash, remote);
-                let package_name = path.basename(dir);
-                info_table.push([package_name, local_hash, status, `<a href="${url}">${remote_hash.slice(0,10)}</a>`]);
-              }
-              return info_table;
-            }
-
-            await core.summary.clear();
-            let packages_table = await generateGitInfoTable(workdir);
-            packages_table = core.summary.addTable(packages_table).stringify();
-            await core.summary.clear();
-
-            [upstream_local_hash, upstream_remote_hash, upstream_status, upstream_remote] = await repo_info(upstreamDir)
-            const upstream_url = getCommitUrl(upstream_remote_hash, upstream_remote);
-            
-            core.summary
-              .addRaw(`mpv-winbuild-cmake: ${upstream_status} (remote:<a href="${upstream_url}">${upstream_remote_hash.slice(0,10)}</a>)`,true)
-              .addRaw(`Compiler: ${{ inputs.compiler }}`,true);
-            await core.summary.addDetails('Packages Version',packages_table).write();
-
-  publish_release:
+  publish-release:
     name: Publish release
-    needs: [build_mpv,params]
-    if: ${{ inputs.release != false }}
     runs-on: ubuntu-latest
-
+    needs:
+      - params
+      - build
+    if: ${{ needs.build.result == 'success' && needs.params.outputs.release_enabled == 'true' }}
+    permissions:
+      contents: write
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Download artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-          pattern: '{mpv,ffmpeg}*'
-          merge-multiple: true
-      - name: "Check artifacts"
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const globber = await glob.create(`artifacts/mpv*.7z`);
-            const files = await globber.glob();
-            if ( files.length == 0 ) {
-              core.setFailed("Artifact does not exist!");
-            }
-      - name: Get current time & Params
-        run: |
-          echo "sha=${{ needs.params.outputs.sha }}" >> $GITHUB_ENV
-          echo "winbuild_repo=${{ inputs.winbuild_repo }}" >> $GITHUB_ENV
-          echo "winbuild_ref=${{ inputs.winbuild_ref }}" >> $GITHUB_ENV
-          echo "mpv_owner=${{ fromJson(needs.params.outputs.params).mpv_owner }}" >> $GITHUB_ENV
-          echo "mpv_ref=${{ fromJson(needs.params.outputs.params).mpv_ref }}" >> $GITHUB_ENV
-          echo "long_time=$(date "+%Y-%m-%d %H:%M")" >> $GITHUB_ENV
-          echo "short_time=$(date "+%Y-%m-%d")" >> $GITHUB_ENV
-          echo "tag_name=$(date "+%Y-%m-%d")-$(head -c 10 <<< "${{ needs.params.outputs.sha }}")"  >> $GITHUB_ENV
+      - name: Checkout builder repository
+        uses: actions/checkout@v6
 
-      - name: Commit version & remove existing tag
+      - name: Download mpv.app artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: ${{ needs.build.outputs.artifact_name }}
+          path: release-assets/mpv
+
+      - name: Download FFmpeg install-prefix artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: ${{ needs.build.outputs.ffmpeg_artifact_name }}
+          path: release-assets/ffmpeg
+
+      - name: Publish GitHub release
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          tag_name: ${{ env.tag_name }}
-        shell: bash
-        run: |
-          git fetch --tags
-          git checkout version || git checkout -b version origin/version || ( git checkout --orphan version && git rm -rf . )
-          echo -e "${tag_name}" > version
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add version
-          git diff-index --quiet HEAD || ( git commit -m "${tag_name}" && git push origin version )
-          if [ $(git tag -l "${tag_name}") ] ;then
-            gh release delete "${tag_name}" || true
-            git push --delete origin "${tag_name}" || true
-            git tag -d "${tag_name}" || true
-          fi
-          git checkout master
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.params.outputs.release_tag }}
+          RELEASE_TITLE: ${{ needs.params.outputs.release_title }}
+          MPV_RELEASE_ASSET: release-assets/mpv/${{ needs.build.outputs.artifact_name }}.tar.gz
+          FFMPEG_RELEASE_ASSET: release-assets/ffmpeg/${{ needs.build.outputs.ffmpeg_artifact_name }}.tar.gz
+        run: bash .github/scripts/publish-release.sh
 
-      - name: "Generate release note"
-        id: note
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const sha = `${{ env.sha }}`;
-            const winbuild_repo = `${{ env.winbuild_repo }}`;
-            const winbuild_ref = `${{ env.winbuild_ref }}`;
-            const winbuildrepo = `${{ env.winbuildrepo }}`;
-            const winbuildref = `${{ env.winbuildref }}`;
-            let note = "";
-            if ( winbuild_repo == winbuildrepo && winbuild_ref == winbuildref ) {
-              note+=`**MPV Git commit**: https://github.com/mpv-player/mpv/commit/${sha}\n`;
-              note+="**Changed**\n";
-              note+="- LuaSocket is built and included, so [simple-mpv-webui](https://github.com/open-dynaMIX/simple-mpv-webui) can be used out of the box\n\n";
-              note+="**Fixes and Minor Enhancements**\n";
-              note+="- davs2: enable 10bit\n";
-              note+="- libass: parse script properties even if missing '[Script Info]'\n";
-              note+="- FFmpeg: check for double BOM in UTF-16 subtitle files\n";
-              note+="- FFmpeg: Parsing ASS subtitle files with missing [Script Info] in the first line\n";
-              note+="- FFmpeg: only handle negative durations for non-ASS subs\n";
-              note+="- FFmpeg: handle long TrueHD input_timing gaps\n";
-              note+="- FFmpeg: potential TrueHD FFmpeg Passthrough Fix\n\n";
-            } else {
-              note+=`**MPV Git commit**: https://github.com/mpv-player/mpv/commit/${sha}\n`;
-            }
-            note+="**Build Time**: ${{ env.long_time }}\n";
-            note+="**Compiler**: ${{ inputs.compiler }}\n";
-            note+="**Build Details**: https://github.com/${{github.repository}}/actions/runs/${{github.run_id}}\n";
-            core.setOutput("note", note);
+  maintain-nuget-cache:
+    name: Maintain NuGet cache
+    runs-on: ubuntu-latest
+    needs:
+      - params
+      - build
+    if: ${{ always() && needs.params.outputs.nuget_write_enabled == 'true' && needs.build.outputs.source_deps_succeeded == 'true' }}
+    continue-on-error: true
+    permissions:
+      contents: read
+      packages: write
+    env:
+      AUDIT_DIR: ${{ github.workspace }}/audit
+      NUGET_CACHE_MODE: ${{ needs.params.outputs.nuget_cache_mode }}
+      NUGET_CACHE_REASON: ${{ needs.params.outputs.nuget_cache_reason }}
+      NUGET_FEED_URL: ${{ needs.params.outputs.nuget_feed_url }}
+      NUGET_SOURCE_NAME: ${{ needs.params.outputs.nuget_source_name }}
+    steps:
+      - name: Checkout builder repository
+        uses: actions/checkout@v6
 
-      - name: Create release for mpv_own
-        uses: ncipollo/release-action@v1
-        if: ${{ ( inputs.winbuild_repo == env.winbuildrepo && inputs.winbuild_ref == env.winbuildref ) }}
-        with:
-          artifacts: "artifacts/mpv*.7z,artifacts/ffmpeg*.7z"
-          commit: version
-          name: "MPV_OWN ${{ env.long_time }}"
-          body: "${{ steps.note.outputs.note }}"
-          tag: "mpv_own-${{ env.short_time }}"
-          allowUpdates: true
-          artifactErrorsFailBuild: true
-          removeArtifacts: true
-          prerelease: false
-          makeLatest: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Create release for mpv-player/mpv
-        uses: ncipollo/release-action@v1
-        if: ${{ inputs.winbuild_repo != env.winbuildrepo || inputs.winbuild_ref != env.winbuildref }}
-        with:
-          artifacts: "artifacts/mpv*.7z,artifacts/ffmpeg*.7z"
-          commit: version
-          name: "MPV ${{ env.long_time }}"
-          body: "${{ steps.note.outputs.note }}"
-          tag: "mpv-${{ env.short_time }}"
-          allowUpdates: true
-          artifactErrorsFailBuild: true
-          removeArtifacts: true
-          prerelease: false
-          makeLatest: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Prune old releases
+      - name: Cleanup old NuGet package versions
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        shell: bash
-        run: |
-          git checkout master
-          bash prunetags.sh
-
-  cache:
-    name: keep cache alive
-    needs: [params,build_mpv]
-    if: ${{ inputs.no_save_cache != true }}
-    runs-on: ubuntu-latest
-    container:
-      image: archlinux/archlinux:base-devel
-    continue-on-error: true
-    strategy:
-      matrix: ${{ fromJson(needs.params.outputs.matrix) }}
-
-    steps:
-      - name: Prepare
-        run: |
-          sudo pacman -Syu --noconfirm
-          sudo pacman -S --noconfirm --needed git curl
-      - uses: actions/checkout@v4
-
-      - name: Resave Toolchain Cache
-        id: toolchain
-        uses: ./action/resave_cache
-        with:
-          path: ${{ github.workspace }}/mpv-winbuild-cmake/build${{ matrix.bit }}
-          key: toolchain-${{ inputs.compiler }}-build${{ matrix.bit }}-
-          restore-keys: toolchain-${{ inputs.compiler }}-build${{ matrix.bit }}-
-
-      - name: Generate cache key
-        id: generate_key
-        uses: actions/github-script@v7
-        with:
-          script: |
-            let toolchain_restore_key="${{ steps.toolchain.outputs.cache-matched-key }}";
-            
-            if (toolchain_restore_key) {
-              const toolchain_version = toolchain_restore_key.split("-build${{ matrix.bit }}-").at(-1);
-              core.exportVariable( `toolchain_version`, toolchain_version );
-            }
-      - name: Resave inital clang sysroot cache
-        id: clang_root
-        if: ${{ inputs.compiler =='clang' && env.toolchain_version  }}
-        uses: ./action/resave_cache
-        with: 
-          path: ${{ github.workspace }}/mpv-winbuild-cmake/clang_root
-          key: ${{ matrix.bit }}-clang_root-${{ env.toolchain_version }}
-          restore-keys: ${{ matrix.bit }}-clang_root-${{ env.toolchain_version }}
-
-  cache_llvm:
-    name: keep llvm cache alive
-    needs: [params,build_mpv]
-    if: ${{ inputs.no_save_cache != true && inputs.compiler =='clang' }}
-    runs-on: ubuntu-latest
-    container:
-      image: archlinux/archlinux:base-devel
-    continue-on-error: true
-
-    steps:
-      - name: Prepare
-        run: |
-          sudo pacman -Syu --noconfirm
-          sudo pacman -S --noconfirm --needed git curl
-      - uses: actions/checkout@v4
-      
-      - name: Resave llvm cache
-        id: llvm
-        continue-on-error: true
-        uses: ./action/resave_cache
-        with: 
-          path: mpv-winbuild-cmake/clang_root
-          key: llvm-
-          restore-keys: llvm-
+          GITHUB_TOKEN: ${{ github.token }}
+        run: bash .github/scripts/cleanup-nuget-cache.sh

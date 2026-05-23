@@ -1,0 +1,18 @@
+{
+  "name": "libass",
+  "version-string": "0.17.4-threading",
+  "description": "libass is a portable subtitle renderer for the ASS/SSA subtitle format",
+  "homepage": "https://github.com/rcombs/libass",
+  "license": "ISC",
+  "supports": "osx",
+  "dependencies": [
+    "freetype",
+    "fribidi",
+    "harfbuzz",
+    "libunibreak",
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    }
+  ]
+}

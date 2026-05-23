@@ -1,0 +1,48 @@
+set(_brew_llvm_cc "$ENV{VCPKG_TARGET_CC}")
+if(_brew_llvm_cc STREQUAL "")
+  set(_brew_llvm_cc "$ENV{CC}")
+endif()
+
+set(_brew_llvm_cxx "$ENV{VCPKG_TARGET_CXX}")
+if(_brew_llvm_cxx STREQUAL "")
+  set(_brew_llvm_cxx "$ENV{CXX}")
+endif()
+
+set(_brew_llvm_objc "$ENV{VCPKG_TARGET_OBJC}")
+if(_brew_llvm_objc STREQUAL "")
+  set(_brew_llvm_objc "$ENV{OBJC}")
+endif()
+
+set(_brew_llvm_objcxx "$ENV{VCPKG_TARGET_OBJCXX}")
+if(_brew_llvm_objcxx STREQUAL "")
+  set(_brew_llvm_objcxx "$ENV{OBJCXX}")
+endif()
+
+set(_brew_llvm_ar "$ENV{VCPKG_TARGET_AR}")
+if(_brew_llvm_ar STREQUAL "")
+  set(_brew_llvm_ar "$ENV{AR}")
+endif()
+
+set(_brew_llvm_ranlib "$ENV{VCPKG_TARGET_RANLIB}")
+if(_brew_llvm_ranlib STREQUAL "")
+  set(_brew_llvm_ranlib "$ENV{RANLIB}")
+endif()
+
+set(_brew_llvm_nm "$ENV{VCPKG_TARGET_NM}")
+if(_brew_llvm_nm STREQUAL "")
+  set(_brew_llvm_nm "$ENV{NM}")
+endif()
+
+set(_brew_llvm_strip "$ENV{VCPKG_TARGET_STRIP}")
+if(_brew_llvm_strip STREQUAL "")
+  set(_brew_llvm_strip "$ENV{STRIP}")
+endif()
+
+set(CMAKE_C_COMPILER "${_brew_llvm_cc}" CACHE FILEPATH "")
+set(CMAKE_CXX_COMPILER "${_brew_llvm_cxx}" CACHE FILEPATH "")
+set(CMAKE_OBJC_COMPILER "${_brew_llvm_objc}" CACHE FILEPATH "")
+set(CMAKE_OBJCXX_COMPILER "${_brew_llvm_objcxx}" CACHE FILEPATH "")
+set(CMAKE_AR "${_brew_llvm_ar}" CACHE FILEPATH "")
+set(CMAKE_RANLIB "${_brew_llvm_ranlib}" CACHE FILEPATH "")
+set(CMAKE_NM "${_brew_llvm_nm}" CACHE FILEPATH "")
+set(CMAKE_STRIP "${_brew_llvm_strip}" CACHE FILEPATH "")

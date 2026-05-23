@@ -1,0 +1,149 @@
+diff --git a/common/aarch64/mc-a.S b/common/aarch64/mc-a.S
+index 40371dfe..bac1722c 100644
+--- a/common/aarch64/mc-a.S
++++ b/common/aarch64/mc-a.S
+@@ -1655,7 +1655,7 @@ function mbtree_propagate_list_internal_neon, export=1
+     zip2        v3.8h,  v18.8h, v19.8h
+     st1         {v0.8h,v1.8h},  [x3], #32
+     st1         {v2.8h,v3.8h},  [x3], #32
+-    b.ge        8b
++    b.gt        8b
+     ret
+ endfunc
+ 
+diff --git a/common/mc.h b/common/mc.h
+index 9e340171..3c13adc4 100644
+--- a/common/mc.h
++++ b/common/mc.h
+@@ -40,38 +40,109 @@ void x264_mbtree_propagate_list_internal_##cpu( int16_t (*mvs)[2], int16_t *prop
+                                                 uint16_t *lowres_costs, int16_t *output,\
+                                                 int bipred_weight, int mb_y, int len );\
+ \
++static ALWAYS_INLINE void mbtree_propagate_list_scalar_tail_##cpu( x264_t *h, uint16_t *ref_costs,\
++                                                                   int16_t (*mvs)[2],\
++                                                                   int16_t *propagate_amount,\
++                                                                   uint16_t *lowres_costs,\
++                                                                   int bipred_weight, int mb_y,\
++                                                                   int start, int len, int list )\
++{\
++    unsigned stride = h->mb.i_mb_stride;\
++    unsigned width = h->mb.i_mb_width;\
++    unsigned height = h->mb.i_mb_height;\
++\
++    for( int i = start; i < len; i++ )\
++    {\
++        int lists_used = lowres_costs[i]>>LOWRES_COST_SHIFT;\
++\
++        if( !(lists_used & (1 << list)) )\
++            continue;\
++\
++        int listamount = propagate_amount[i];\
++        if( lists_used == 3 )\
++            listamount = (listamount * bipred_weight + 32) >> 6;\
++\
++        if( !M32( mvs[i] ) )\
++        {\
++            MC_CLIP_ADD( ref_costs[mb_y*stride + i], listamount );\
++            continue;\
++        }\
++\
++        int x = mvs[i][0];\
++        int y = mvs[i][1];\
++        unsigned mbx = (unsigned)((x>>5)+i);\
++        unsigned mby = (unsigned)((y>>5)+mb_y);\
++        unsigned idx0 = mbx + mby * stride;\
++        unsigned idx2 = idx0 + stride;\
++        x &= 31;\
++        y &= 31;\
++        int idx0weight = ((32-y)*(32-x) * listamount + 512) >> 10;\
++        int idx1weight = ((32-y)*x      * listamount + 512) >> 10;\
++        int idx2weight = (y*(32-x)      * listamount + 512) >> 10;\
++        int idx3weight = (y*x           * listamount + 512) >> 10;\
++\
++        if( mbx < width-1 && mby < height-1 )\
++        {\
++            MC_CLIP_ADD( ref_costs[idx0+0], idx0weight );\
++            MC_CLIP_ADD( ref_costs[idx0+1], idx1weight );\
++            MC_CLIP_ADD( ref_costs[idx2+0], idx2weight );\
++            MC_CLIP_ADD( ref_costs[idx2+1], idx3weight );\
++        }\
++        else\
++        {\
++            if( mby < height )\
++            {\
++                if( mbx < width )\
++                    MC_CLIP_ADD( ref_costs[idx0+0], idx0weight );\
++                if( mbx+1 < width )\
++                    MC_CLIP_ADD( ref_costs[idx0+1], idx1weight );\
++            }\
++            if( mby+1 < height )\
++            {\
++                if( mbx < width )\
++                    MC_CLIP_ADD( ref_costs[idx2+0], idx2weight );\
++                if( mbx+1 < width )\
++                    MC_CLIP_ADD( ref_costs[idx2+1], idx3weight );\
++            }\
++        }\
++    }\
++}\
++\
+ static void mbtree_propagate_list_##cpu( x264_t *h, uint16_t *ref_costs, int16_t (*mvs)[2],\
+                                          int16_t *propagate_amount, uint16_t *lowres_costs,\
+                                          int bipred_weight, int mb_y, int len, int list )\
+ {\
+     int16_t *current = h->scratch_buffer2;\
++    int aligned_len = len & ~7;\
+ \
+-    x264_mbtree_propagate_list_internal_##cpu( mvs, propagate_amount, lowres_costs,\
+-                                               current, bipred_weight, mb_y, len );\
++    if( aligned_len )\
++        x264_mbtree_propagate_list_internal_##cpu( mvs, propagate_amount, lowres_costs,\
++                                                   current, bipred_weight, mb_y, aligned_len );\
+ \
+     unsigned stride = h->mb.i_mb_stride;\
+     unsigned width = h->mb.i_mb_width;\
+     unsigned height = h->mb.i_mb_height;\
++    unsigned mb_y_offset = mb_y * stride;\
+ \
+-    for( int i = 0; i < len; current += 32 )\
++    for( int i = 0; i < aligned_len; current += 32 )\
+     {\
+-        int end = X264_MIN( i+8, len );\
++        int end = i+8;\
+         for( ; i < end; i++, current += 2 )\
+         {\
+             if( !(lowres_costs[i] & (1 << (list+LOWRES_COST_SHIFT))) )\
+                 continue;\
+-\
+-            unsigned mbx = (unsigned)current[0];\
+-            unsigned mby = (unsigned)current[1];\
+-            unsigned idx0 = mbx + mby * stride;\
+-            unsigned idx2 = idx0 + stride;\
+ \
+             /* Shortcut for the simple/common case of zero MV */\
+             if( !M32( mvs[i] ) )\
+             {\
+-                MC_CLIP_ADD( ref_costs[idx0], current[16] );\
++                MC_CLIP_ADD( ref_costs[mb_y_offset + i], current[16] );\
+                 continue;\
+             }\
++\
++            unsigned mbx = (unsigned)current[0];\
++            unsigned mby = (unsigned)current[1];\
++            unsigned idx0 = mbx + mby * stride;\
++            unsigned idx2 = idx0 + stride;\
+ \
+             if( mbx < width-1 && mby < height-1 )\
+             {\
+@@ -99,6 +170,11 @@ static void mbtree_propagate_list_##cpu( x264_t *h, uint16_t *ref_costs, int16_t
+             }\
+         }\
+     }\
++\
++    if( aligned_len < len )\
++        mbtree_propagate_list_scalar_tail_##cpu( h, ref_costs, mvs, propagate_amount,\
++                                                 lowres_costs, bipred_weight, mb_y,\
++                                                 aligned_len, len, list );\
+ }
+ 
+ #define x264_plane_copy_c x264_template(plane_copy_c)

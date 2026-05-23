@@ -1,0 +1,13 @@
+diff --git a/configure b/configure
+index 6f95e2314..e677e36f4 100644
+--- a/configure
++++ b/configure
+@@ -606,7 +606,7 @@ if [[ $host_os = mingw* || $host_os = msys* || $host_os = cygwin* ]]; then
+         if cc_check '' -Qdiag-error:10006,10157 ; then
+             CHECK_CFLAGS="$CHECK_CFLAGS -Qdiag-error:10006,10157"
+         fi
+-    elif [[ "$cc_base" = cl || "$cc_base" = cl[\ .]* ]]; then
++    elif [[ "$cc_base" = cl || "$cc_base" = cl[\ .]* || "$cc_base" = clang-cl || "$cc_base" = clang-cl[\ .]* ]]; then
+         # Standard Microsoft Visual Studio
+         compiler=CL
+         compiler_style=MS
