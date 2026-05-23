@@ -1,0 +1,48 @@
+diff --git a/common/base.h b/common/base.h
+index 76a4ccd..1ab9c9a 100644
+--- a/common/base.h
++++ b/common/base.h
+@@ -317,23 +317,38 @@ char *x264_param2string( x264_param_t *p, int b_res );
+ 
+ /* Needs to be enough to contain any set of buffers that use combined allocations */
+ #define PREALLOC_BUF_SIZE 1024
++
++static ALWAYS_INLINE void *x264_prealloc_load_ptr( const void *slot )
++{
++    void *ptr;
++    memcpy( &ptr, slot, sizeof(ptr) );
++    return ptr;
++}
++
++static ALWAYS_INLINE void x264_prealloc_store_ptr( void *slot, void *ptr )
++{
++    memcpy( slot, &ptr, sizeof(ptr) );
++}
+ 
+ #define PREALLOC_INIT\
+     int    prealloc_idx = 0;\
+     int64_t prealloc_size = 0;\
+-    uint8_t **preallocs[PREALLOC_BUF_SIZE];
++    void  *preallocs[PREALLOC_BUF_SIZE];
+ 
+ #define PREALLOC( var, size )\
+ do {\
+     var = (void*)(intptr_t)prealloc_size;\
+-    preallocs[prealloc_idx++] = (uint8_t**)&var;\
++    preallocs[prealloc_idx++] = &var;\
+     prealloc_size += ALIGN((int64_t)(size), NATIVE_ALIGN);\
+ } while( 0 )
+ 
+ #define PREALLOC_END( ptr )\
+ do {\
+     CHECKED_MALLOC( ptr, prealloc_size );\
+-    while( prealloc_idx-- )\
+-        *preallocs[prealloc_idx] = (uint8_t*)((intptr_t)(*preallocs[prealloc_idx]) + (intptr_t)ptr);\
++    while( prealloc_idx-- )\
++    {\
++        void *offset = x264_prealloc_load_ptr( preallocs[prealloc_idx] );\
++        x264_prealloc_store_ptr( preallocs[prealloc_idx], (uint8_t*)ptr + (intptr_t)offset );\
++    }\
+ } while( 0 )
+ 
+ #endif

@@ -1,0 +1,13 @@
+{
+  "name": "libunibreak",
+  "version": "7.0",
+  "description": "An implementation of Unicode line, word, and grapheme breaking algorithms.",
+  "homepage": "https://github.com/adah1972/libunibreak",
+  "license": "zlib-acknowledgement",
+  "dependencies": [
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    }
+  ]
+}

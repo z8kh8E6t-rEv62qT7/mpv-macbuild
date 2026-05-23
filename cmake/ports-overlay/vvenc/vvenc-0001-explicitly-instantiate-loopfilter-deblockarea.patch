@@ -1,0 +1,14 @@
+diff --git a/source/Lib/CommonLib/LoopFilter.cpp b/source/Lib/CommonLib/LoopFilter.cpp
+index f0df20dc..9cb5d433 100644
+--- a/source/Lib/CommonLib/LoopFilter.cpp
++++ b/source/Lib/CommonLib/LoopFilter.cpp
+@@ -1748,6 +1748,9 @@ void LoopFilter::xEdgeFilterChroma( const CodingStructure &cs, const Position &p
+   }
+ }
+ 
++template void LoopFilter::xDeblockArea<EDGE_VER>( const CodingStructure& cs, const UnitArea& area, const ChannelType chType, PelUnitBuf& picRecoBuf ) const;
++template void LoopFilter::xDeblockArea<EDGE_HOR>( const CodingStructure& cs, const UnitArea& area, const ChannelType chType, PelUnitBuf& picRecoBuf ) const;
++
+ }
+ 
+ //! \}

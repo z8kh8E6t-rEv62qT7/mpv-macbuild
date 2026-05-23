@@ -1,0 +1,9 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -327,4 +327,5 @@ if(APPLE AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+     target_compile_options(aribcaption
+         PRIVATE
+             -fno-aligned-allocation
++            $<$<COMPILE_LANGUAGE:CXX>:-Wno-elaborated-enum-base>
+     )

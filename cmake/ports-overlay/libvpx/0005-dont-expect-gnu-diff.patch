@@ -1,0 +1,8 @@
+diff --git a/configure b/configure
+--- a/configure
++++ b/configure
+@@ -194,3 +194,3 @@
+-if ! diff --version >/dev/null; then
++if ! hash diff >/dev/null; then
+   die "diff missing: Try installing diffutils via your package manager."
+ fi

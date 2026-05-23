@@ -1,0 +1,285 @@
+diff --git a/libvmaf/src/feature/ciede.c b/libvmaf/src/feature/ciede.c
+index 7bbfa8f..187582b 100644
+--- a/libvmaf/src/feature/ciede.c
++++ b/libvmaf/src/feature/ciede.c
+@@ -372,7 +372,7 @@ static int extract(VmafFeatureExtractor *fex,
+                                          index);
+ }
+ 
+-static int close(VmafFeatureExtractor *fex)
++static int ciede_close(VmafFeatureExtractor *fex)
+ {
+     CiedeState *s = fex->priv;
+     if (s->ref.data[0] && s->dist.data[0]) {
+@@ -391,7 +391,7 @@ VmafFeatureExtractor vmaf_fex_ciede = {
+     .name = "ciede",
+     .init = init,
+     .extract = extract,
+-    .close = close,
++    .close = ciede_close,
+     .priv_size = sizeof(CiedeState),
+     .provided_features = provided_features,
+ };
+diff --git a/libvmaf/src/feature/float_adm.c b/libvmaf/src/feature/float_adm.c
+index 60d1986..555746d 100644
+--- a/libvmaf/src/feature/float_adm.c
++++ b/libvmaf/src/feature/float_adm.c
+@@ -207,7 +207,7 @@ static int extract(VmafFeatureExtractor *fex,
+     return err;
+ }
+ 
+-static int close(VmafFeatureExtractor *fex)
++static int float_adm_close(VmafFeatureExtractor *fex)
+ {
+     AdmState *s = fex->priv;
+     if (s->ref) aligned_free(s->ref);
+@@ -230,7 +230,7 @@ VmafFeatureExtractor vmaf_fex_float_adm = {
+     .init = init,
+     .extract = extract,
+     .options = options,
+-    .close = close,
++    .close = float_adm_close,
+     .priv_size = sizeof(AdmState),
+     .provided_features = provided_features,
+ };
+diff --git a/libvmaf/src/feature/float_ansnr.c b/libvmaf/src/feature/float_ansnr.c
+index 95ca32f..e2fb6df 100644
+--- a/libvmaf/src/feature/float_ansnr.c
++++ b/libvmaf/src/feature/float_ansnr.c
+@@ -99,7 +99,7 @@ static int extract(VmafFeatureExtractor *fex,
+     return 0;
+ }
+ 
+-static int close(VmafFeatureExtractor *fex)
++static int float_ansnr_close(VmafFeatureExtractor *fex)
+ {
+     AnsnrState *s = fex->priv;
+     if (s->ref) aligned_free(s->ref);
+@@ -116,7 +116,7 @@ VmafFeatureExtractor vmaf_fex_float_ansnr = {
+         .name = "float_ansnr",
+         .init = init,
+         .extract = extract,
+-        .close = close,
++        .close = float_ansnr_close,
+         .priv_size = sizeof(AnsnrState),
+         .provided_features = provided_features,
+ };
+diff --git a/libvmaf/src/feature/float_moment.c b/libvmaf/src/feature/float_moment.c
+index 5131e3e..43c137c 100644
+--- a/libvmaf/src/feature/float_moment.c
++++ b/libvmaf/src/feature/float_moment.c
+@@ -102,7 +102,7 @@ static int extract(VmafFeatureExtractor *fex,
+     return 0;
+ }
+ 
+-static int close(VmafFeatureExtractor *fex)
++static int float_moment_close(VmafFeatureExtractor *fex)
+ {
+     MomentState *s = fex->priv;
+     if (s->ref) aligned_free(s->ref);
+@@ -119,7 +119,7 @@ VmafFeatureExtractor vmaf_fex_float_moment = {
+     .name = "float_moment",
+     .init = init,
+     .extract = extract,
+-    .close = close,
++    .close = float_moment_close,
+     .priv_size = sizeof(MomentState),
+     .provided_features = provided_features,
+ };
+diff --git a/libvmaf/src/feature/float_motion.c b/libvmaf/src/feature/float_motion.c
+index 947247b..1501b58 100644
+--- a/libvmaf/src/feature/float_motion.c
++++ b/libvmaf/src/feature/float_motion.c
+@@ -195,7 +195,7 @@ static int extract(VmafFeatureExtractor *fex,
+     return 0;
+ }
+ 
+-static int close(VmafFeatureExtractor *fex)
++static int float_motion_close(VmafFeatureExtractor *fex)
+ {
+     MotionState *s = fex->priv;
+ 
+@@ -220,7 +220,7 @@ VmafFeatureExtractor vmaf_fex_float_motion = {
+     .extract = extract,
+     .options = options,
+     .flush = flush,
+-    .close = close,
++    .close = float_motion_close,
+     .priv_size = sizeof(MotionState),
+     .provided_features = provided_features,
+     .flags = VMAF_FEATURE_EXTRACTOR_TEMPORAL,
+diff --git a/libvmaf/src/feature/float_ms_ssim.c b/libvmaf/src/feature/float_ms_ssim.c
+index b96d973..603654e 100644
+--- a/libvmaf/src/feature/float_ms_ssim.c
++++ b/libvmaf/src/feature/float_ms_ssim.c
+@@ -161,7 +161,7 @@ static int extract(VmafFeatureExtractor *fex,
+     return err;
+ }
+ 
+-static int close(VmafFeatureExtractor *fex)
++static int float_ms_ssim_close(VmafFeatureExtractor *fex)
+ {
+     MsSsimState *s = fex->priv;
+     if (s->ref) aligned_free(s->ref);
+@@ -179,7 +179,7 @@ VmafFeatureExtractor vmaf_fex_float_ms_ssim = {
+     .init = init,
+     .extract = extract,
+     .options = options,
+-    .close = close,
++    .close = float_ms_ssim_close,
+     .priv_size = sizeof(MsSsimState),
+     .provided_features = provided_features,
+ };
+diff --git a/libvmaf/src/feature/float_psnr.c b/libvmaf/src/feature/float_psnr.c
+index 056fe82..5e69b33 100644
+--- a/libvmaf/src/feature/float_psnr.c
++++ b/libvmaf/src/feature/float_psnr.c
+@@ -96,7 +96,7 @@ static int extract(VmafFeatureExtractor *fex,
+     return 0;
+ }
+ 
+-static int close(VmafFeatureExtractor *fex)
++static int float_psnr_close(VmafFeatureExtractor *fex)
+ {
+     PsnrState *s = fex->priv;
+     if (s->ref) aligned_free(s->ref);
+@@ -113,7 +113,7 @@ VmafFeatureExtractor vmaf_fex_float_psnr = {
+     .name = "float_psnr",
+     .init = init,
+     .extract = extract,
+-    .close = close,
++    .close = float_psnr_close,
+     .priv_size = sizeof(PsnrState),
+     .provided_features = provided_features,
+ };
+diff --git a/libvmaf/src/feature/float_ssim.c b/libvmaf/src/feature/float_ssim.c
+index 6627a2f..4126514 100644
+--- a/libvmaf/src/feature/float_ssim.c
++++ b/libvmaf/src/feature/float_ssim.c
+@@ -145,7 +145,7 @@ static int extract(VmafFeatureExtractor *fex,
+     return err;
+ }
+ 
+-static int close(VmafFeatureExtractor *fex)
++static int float_ssim_close(VmafFeatureExtractor *fex)
+ {
+     SsimState *s = fex->priv;
+     if (s->ref) aligned_free(s->ref);
+@@ -163,7 +163,7 @@ VmafFeatureExtractor vmaf_fex_float_ssim = {
+     .init = init,
+     .extract = extract,
+     .options = options,
+-    .close = close,
++    .close = float_ssim_close,
+     .priv_size = sizeof(SsimState),
+     .provided_features = provided_features,
+ };
+diff --git a/libvmaf/src/feature/float_vif.c b/libvmaf/src/feature/float_vif.c
+index b1e5d63..4414f55 100644
+--- a/libvmaf/src/feature/float_vif.c
++++ b/libvmaf/src/feature/float_vif.c
+@@ -179,7 +179,7 @@ static int extract(VmafFeatureExtractor *fex,
+     return err;
+ }
+ 
+-static int close(VmafFeatureExtractor *fex)
++static int float_vif_close(VmafFeatureExtractor *fex)
+ {
+     VifState *s = fex->priv;
+     if (s->ref) aligned_free(s->ref);
+@@ -202,7 +202,7 @@ VmafFeatureExtractor vmaf_fex_float_vif = {
+     .init = init,
+     .extract = extract,
+     .options = options,
+-    .close = close,
++    .close = float_vif_close,
+     .priv_size = sizeof(VifState),
+     .provided_features = provided_features,
+ };
+diff --git a/libvmaf/src/feature/integer_adm.c b/libvmaf/src/feature/integer_adm.c
+index b125276..b9889eb 100644
+--- a/libvmaf/src/feature/integer_adm.c
++++ b/libvmaf/src/feature/integer_adm.c
+@@ -2806,7 +2806,7 @@ static int extract(VmafFeatureExtractor *fex,
+     return err;
+ }
+ 
+-static int close(VmafFeatureExtractor *fex)
++static int integer_adm_close(VmafFeatureExtractor *fex)
+ {
+     AdmState *s = fex->priv;
+ 
+@@ -2834,7 +2834,7 @@ VmafFeatureExtractor vmaf_fex_integer_adm = {
+     .init = init,
+     .extract = extract,
+     .options = options,
+-    .close = close,
++    .close = integer_adm_close,
+     .priv_size = sizeof(AdmState),
+     .provided_features = provided_features,
+ };
+diff --git a/libvmaf/src/feature/integer_motion.c b/libvmaf/src/feature/integer_motion.c
+index ef51708..e431690 100644
+--- a/libvmaf/src/feature/integer_motion.c
++++ b/libvmaf/src/feature/integer_motion.c
+@@ -432,7 +432,7 @@ static int extract(VmafFeatureExtractor *fex,
+     return err;
+ }
+ 
+-static int close(VmafFeatureExtractor *fex)
++static int integer_motion_close(VmafFeatureExtractor *fex)
+ {
+     MotionState *s = fex->priv;
+ 
+@@ -455,7 +455,7 @@ VmafFeatureExtractor vmaf_fex_integer_motion = {
+     .init = init,
+     .extract = extract,
+     .flush = flush,
+-    .close = close,
++    .close = integer_motion_close,
+     .options = options,
+     .priv_size = sizeof(MotionState),
+     .provided_features = provided_features,
+diff --git a/libvmaf/src/feature/integer_ssim.c b/libvmaf/src/feature/integer_ssim.c
+index 418b71f..51c9ee9 100644
+--- a/libvmaf/src/feature/integer_ssim.c
++++ b/libvmaf/src/feature/integer_ssim.c
+@@ -220,7 +220,7 @@ static int extract(VmafFeatureExtractor *fex,
+     return 0;
+ }
+ 
+-static int close(VmafFeatureExtractor *fex)
++static int integer_ssim_close(VmafFeatureExtractor *fex)
+ {
+     return 0;
+ }
+@@ -234,6 +234,6 @@ VmafFeatureExtractor vmaf_fex_ssim = {
+     .name = "ssim",
+     .init = init,
+     .extract = extract,
+-    .close = close,
++    .close = integer_ssim_close,
+     .provided_features = provided_features,
+ };
+diff --git a/libvmaf/src/feature/integer_vif.c b/libvmaf/src/feature/integer_vif.c
+index fd6a823..bd51105 100644
+--- a/libvmaf/src/feature/integer_vif.c
++++ b/libvmaf/src/feature/integer_vif.c
+@@ -797,7 +797,7 @@ static int extract(VmafFeatureExtractor *fex,
+     return write_scores(feature_collector, index, vif_score, s);
+ }
+ 
+-static int close(VmafFeatureExtractor *fex)
++static int integer_vif_close(VmafFeatureExtractor *fex)
+ {
+     VifState *s = fex->priv;
+     if (s->public.buf.data) aligned_free(s->public.buf.data);
+@@ -820,7 +820,7 @@ VmafFeatureExtractor vmaf_fex_integer_vif = {
+     .init = init,
+     .extract = extract,
+     .options = options,
+-    .close = close,
++    .close = integer_vif_close,
+     .priv_size = sizeof(VifState),
+     .provided_features = provided_features,
+ };

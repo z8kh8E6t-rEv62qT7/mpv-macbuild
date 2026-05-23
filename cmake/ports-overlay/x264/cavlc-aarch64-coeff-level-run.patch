@@ -1,0 +1,55 @@
+diff --git a/common/aarch64/quant-a.S b/common/aarch64/quant-a.S
+index eaac703d..e3ec5942 100644
+--- a/common/aarch64/quant-a.S
++++ b/common/aarch64/quant-a.S
+@@ -540,24 +540,29 @@ function coeff_level_run\size\()_neon, export=1
+ .endif
+ .if         \size < 15
+     ld1         {v0.8h}, [x0]
+-    uqxtn       v0.8b,  v0.8h
+-    cmtst       v0.8b,  v0.8b,  v0.8b
++    cmtst       v0.8h,  v0.8h,  v0.8h
++    xtn         v0.8b,  v0.8h
+ .else
+     ld1         {v0.8h,v1.8h}, [x0]
+-    uqxtn       v0.8b,  v0.8h
+-    uqxtn2      v0.16b, v1.8h
+-    cmtst       v0.16b, v0.16b, v0.16b
++    cmtst       v0.8h,  v0.8h,  v0.8h
++    cmtst       v1.8h,  v1.8h,  v1.8h
++    xtn         v0.8b,  v0.8h
++    xtn2        v0.16b, v1.8h
+     shrn        v0.8b,  v0.8h,  #4
+ .endif
+     fmov        x2,  d0
+ .if \size == 15
+     add         x0,  x0,  #2
+ .endif
++    cbz         x2,  0f
+ 
+     coeff_level_run_start \size
+ 
+     coeff_level_run (4 - (\size + 1) / 8)
+ 
+     ret
++0:
++    mov         w0,  #0
++    ret
+ endfunc
+ .endm
+diff --git a/encoder/cavlc.c b/encoder/cavlc.c
+index 71744a28..50300f11 100644
+--- a/encoder/cavlc.c
++++ b/encoder/cavlc.c
+@@ -132,6 +132,11 @@ static int cavlc_block_residual_internal( x264_t *h, int ctx_block_cat, dctcoef
+ 
+     /* level and run and total */
+     i_total = h->quantf.coeff_level_run[ctx_block_cat]( l, &runlevel );
++    if( !i_total )
++    {
++        bs_write_vlc( s, x264_coeff0_token[nC] );
++        return 0;
++    }
+     x264_prefetch( &x264_run_before[runlevel.mask] );
+     i_total_zero = runlevel.last + 1 - i_total;
+ 
