@@ -15,6 +15,11 @@ on:
         description: "FFmpeg tag, branch, or commit to build. Use latest for the newest release tag."
         required: false
         default: latest
+      run_ffmpeg_fate:
+        description: "Run the full upstream FFmpeg FATE suite after building FFmpeg."
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -160,6 +165,11 @@ jobs:
       - name: Audit FFmpeg runtime dependencies
         id: ffmpeg-runtime-audit
         run: bash builder/.github/scripts/audit-ffmpeg-runtime.sh
+
+      - name: Run full FFmpeg FATE suite
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_ffmpeg_fate }}
+        id: ffmpeg-fate
+        run: bash builder/.github/scripts/run-ffmpeg-fate.sh
 
       - name: Configure mpv with Meson
         id: configure
