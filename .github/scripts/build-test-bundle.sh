@@ -57,6 +57,7 @@ copy_vulkan_runtime_into_bundle() {
   local resource_root="build/mpv.app/Contents/Resources/vulkan"
   local moltenvk_library
   local moltenvk_basename="libMoltenVK.dylib"
+  local copied_icd_count=0
 
   mkdir -p "$framework_root" "$resource_root/icd.d" "$resource_root/explicit_layer.d"
 
@@ -67,18 +68,21 @@ copy_vulkan_runtime_into_bundle() {
 
   ensure_vulkan_loader_links "$framework_root"
 
-  moltenvk_library="$(find "$framework_root" -maxdepth 1 -type f -name 'libMoltenVK*.dylib' | head -n1 || true)"
-  if [[ -n "$moltenvk_library" ]]; then
-    moltenvk_basename="$(basename "$moltenvk_library")"
-  fi
-
   while IFS= read -r json_file; do
     cp "$json_file" "$resource_root/icd.d/$(basename "$json_file")"
+    copied_icd_count=$((copied_icd_count + 1))
   done < <(find "$FFMPEG_PREFIX/share/vulkan/icd.d" -type f -name '*.json' 2>/dev/null | sort)
 
   while IFS= read -r json_file; do
     cp "$json_file" "$resource_root/explicit_layer.d/$(basename "$json_file")"
   done < <(find "$FFMPEG_PREFIX/share/vulkan/explicit_layer.d" -type f -name '*.json' 2>/dev/null | sort)
+
+  moltenvk_library="$(find "$framework_root" -maxdepth 1 -type f -name 'libMoltenVK*.dylib' | head -n1 || true)"
+  if [[ -n "$moltenvk_library" ]]; then
+    moltenvk_basename="$(basename "$moltenvk_library")"
+  elif [[ "$copied_icd_count" -gt 0 ]]; then
+    die "Vulkan ICD manifests were bundled, but libMoltenVK*.dylib is missing from $framework_root"
+  fi
 
   python3 - "$resource_root" "$moltenvk_basename" <<'PY'
 import json
