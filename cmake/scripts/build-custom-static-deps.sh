@@ -455,12 +455,78 @@ build_xvidcore() {
   pkg-config --exists xvidcore || true
 }
 
+patch_moltenvk_dynamic_headerpad() {
+  local project_file="$SOURCE_ROOT/MoltenVK/MoltenVK/MoltenVK.xcodeproj/project.pbxproj"
+
+  [[ -f "$project_file" ]] || die "MoltenVK Xcode project was not found: $project_file"
+  python3 - "$project_file" <<'PY'
+import re
+import sys
+from pathlib import Path
+
+project_file = Path(sys.argv[1])
+text = project_file.read_text()
+flag = '"-Wl,-headerpad_max_install_names",'
+
+pattern = re.compile(
+    r'(?P<prefix>LD_DYLIB_INSTALL_NAME = "@rpath/lib\$\{PRODUCT_NAME\}\.dylib";\n'
+    r'(?P<indent>\s+)OTHER_LDFLAGS = \(\n)'
+    r'(?P<body>.*?)'
+    r'(?P<suffix>\s+\);)',
+    re.DOTALL,
+)
+
+patched = 0
+already_patched = 0
+
+def add_headerpad(match):
+    global patched, already_patched
+    body = match.group("body")
+    if flag in body:
+        already_patched += 1
+        return match.group(0)
+
+    entry_indent_match = re.search(r'^(\s*)"', body, re.MULTILINE)
+    entry_indent = entry_indent_match.group(1) if entry_indent_match else match.group("indent") + "\t"
+    separator = "" if body.endswith("\n") else "\n"
+    suffix = match.group("suffix")
+    if suffix.startswith("\n"):
+        suffix = suffix[1:]
+    patched += 1
+    return match.group("prefix") + body + separator + f"{entry_indent}{flag}\n" + suffix
+
+updated = pattern.sub(add_headerpad, text)
+if patched == 0 and already_patched == 0:
+    raise SystemExit("did not find MoltenVK dynamic dylib OTHER_LDFLAGS blocks to patch")
+
+if updated != text:
+    project_file.write_text(updated)
+
+print(f"MoltenVK dynamic dylib header padding: patched={patched}, already_patched={already_patched}")
+PY
+}
+
+verify_moltenvk_dynamic_can_be_rewritten() {
+  local dylib="$1"
+  local probe="$BUILD_ROOT/moltenvk-headerpad-probe.dylib"
+
+  [[ -f "$dylib" ]] || die "cannot verify missing MoltenVK dylib: $dylib"
+  cp "$dylib" "$probe"
+  chmod u+w "$probe"
+  if ! normalize_llvm_runtime_refs "$probe"; then
+    rm -f "$probe"
+    die "MoltenVK dylib was built without enough header padding for runtime fixups: $dylib"
+  fi
+  rm -f "$probe"
+}
+
 build_moltenvk() {
   clone_or_update https://github.com/KhronosGroup/MoltenVK.git "$SOURCE_ROOT/MoltenVK"
   git -C "$SOURCE_ROOT/MoltenVK" submodule update --init --recursive
   (
     cd "$SOURCE_ROOT/MoltenVK"
     ./fetchDependencies --macos
+    patch_moltenvk_dynamic_headerpad
     make macos
   )
   mkdir -p "$SOURCE_PREFIX/lib" "$SOURCE_PREFIX/share/vulkan/icd.d" "$SOURCE_PREFIX/share/vulkan/explicit_layer.d"
@@ -470,6 +536,7 @@ build_moltenvk() {
 
   moltenvk_dynamic="$(find "$SOURCE_ROOT/MoltenVK/Package" -path '*/dynamic/dylib/macOS/libMoltenVK*.dylib' | head -n1 || true)"
   [[ -n "$moltenvk_dynamic" ]] || die "libMoltenVK.dylib was not produced by MoltenVK"
+  verify_moltenvk_dynamic_can_be_rewritten "$moltenvk_dynamic"
   cp "$moltenvk_dynamic" "$SOURCE_PREFIX/lib/$(basename "$moltenvk_dynamic")"
 
   while IFS= read -r icd_json; do
