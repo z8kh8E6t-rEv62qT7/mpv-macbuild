@@ -383,6 +383,25 @@ def main() -> int:
             f"luajit cannot require socket: {combined_output(lua_result).strip()}",
         )
 
+    luajit_pcall_script = (
+        'luajit -e \''
+        'local ok, err = pcall(error, "plain-error"); '
+        'assert(ok == false and err == "plain-error"); '
+        'local loaded, require_err = pcall(require, "definitely-missing-mpv-macbuild-smoke-module"); '
+        'assert(loaded == false, "missing module unexpectedly loaded"); '
+        'assert(type(require_err) == "string", "missing module error is not a string"); '
+        'assert(require_err:match("module .- not found"), require_err)'
+        '\''
+    )
+    luajit_pcall_result = run_shell(luajit_pcall_script)
+    if luajit_pcall_result.returncode == 0:
+        audit.row("source-built LuaJIT protected require", "OK", "missing require is caught by pcall")
+    else:
+        audit.fail(
+            "source-built LuaJIT protected require",
+            f"pcall(require missing) failed: {combined_output(luajit_pcall_result).strip()}",
+        )
+
     audit.add()
     audit.add("## Mapped, plugin-exception, or not-applicable package decisions")
     audit.add()

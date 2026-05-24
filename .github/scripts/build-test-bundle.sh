@@ -24,7 +24,6 @@ run_tests() {
   cat > "$test_config_dir/mpv.conf" <<'EOF'
 vo=null
 ao=null
-gpu-context=no
 hwdec=no
 EOF
 
@@ -32,7 +31,6 @@ EOF
     env \
       HOME="$test_home" \
       XDG_CONFIG_HOME="$test_home/.config" \
-      MPV_HOME="$test_config_dir" \
       SDL_VIDEODRIVER=dummy \
       SDL_AUDIODRIVER=dummy \
       meson test -C build --print-errorlogs
@@ -167,7 +165,7 @@ normalize_mpv_build_runtime() {
 }
 
 fix_vapoursynth_bundle_refs() {
-  local runtime_dir="build/mpv.app/Contents/PlugIns/source-built/vapoursynth"
+  local runtime_dir="build/mpv.app/Contents/Resources/source-built/vapoursynth"
   local bundle_binary="build/mpv.app/Contents/MacOS/mpv"
   local target
 
@@ -178,7 +176,7 @@ fix_vapoursynth_bundle_refs() {
     rewrite_vapoursynth_ref "$target" "@rpath/libvsscript.dylib"
     delete_rpath_if_present "$target" "$SOURCE_PREFIX/lib/vapoursynth"
     if [[ "$target" == "$bundle_binary" ]]; then
-      add_rpath_if_missing "$target" "@executable_path/../PlugIns/source-built/vapoursynth"
+      add_rpath_if_missing "$target" "@executable_path/../Resources/source-built/vapoursynth"
     else
       add_rpath_if_missing "$target" "$(loader_path_to_dir "$target" "$runtime_dir")"
     fi
@@ -189,29 +187,83 @@ fix_vapoursynth_bundle_refs() {
     -delete 2>/dev/null || true
 }
 
+run_bundle_luasocket_smoke() {
+  local test_home="$RUNNER_TEMP/mpv-bundle-lua-home"
+  local test_config_dir="$test_home/.config/mpv"
+  local smoke_script="$RUNNER_TEMP/mpv-bundle-luasocket-smoke.lua"
+
+  rm -rf "$test_home"
+  mkdir -p "$test_config_dir"
+  cat > "$test_config_dir/mpv.conf" <<'EOF'
+vo=null
+ao=null
+hwdec=no
+EOF
+  cat > "$smoke_script" <<'EOF'
+require("socket")
+local loaded, require_err = pcall(require, "definitely-missing-mpv-macbuild-smoke-module")
+assert(loaded == false, "missing module unexpectedly loaded")
+assert(type(require_err) == "string", "missing module error is not a string")
+assert(require_err:match("module .- not found"), require_err)
+mp.command("quit")
+EOF
+
+  run_logged "mpv-bundle-luasocket-smoke" \
+    env \
+      HOME="$test_home" \
+      XDG_CONFIG_HOME="$test_home/.config" \
+      SDL_VIDEODRIVER=dummy \
+      SDL_AUDIODRIVER=dummy \
+      ./build/mpv.app/Contents/MacOS/mpv \
+        --idle=yes \
+        --force-window=no \
+        --script="$smoke_script"
+}
+
+sign_mach_o_files() {
+  local root="$1"
+  local target
+
+  while IFS= read -r target; do
+    is_mach_o "$target" || continue
+    codesign --force --sign - "$target"
+  done < <(find "$root" -type f \( -perm -111 -o -name '*.dylib' -o -name '*.so' -o -name '*.bundle' \) | sort)
+}
+
+sign_bundle_after_fixups() {
+  sign_mach_o_files build/mpv.app
+  codesign --force --sign - build/mpv.app
+  codesign --verify --deep --strict --verbose=2 build/mpv.app
+}
+
 run_bundle() {
+  run_logged "mpv-meson-compile-for-bundle" meson compile -C build -j4
+  run_logged "mpv-normalize-build-runtime-for-bundle" normalize_mpv_build_runtime
   run_logged "mpv-macos-bundle" meson compile -C build macos-bundle
   test -d build/mpv.app
 
-  plugin_root="build/mpv.app/Contents/PlugIns/source-built"
-  mkdir -p "$plugin_root"
+  source_built_root="build/mpv.app/Contents/Resources/source-built"
+  mkdir -p "$source_built_root"
+  rm -rf build/mpv.app/Contents/PlugIns/source-built
 
-  for plugin_dir in \
+  for runtime_dir in \
     "$SOURCE_PREFIX/lib/frei0r-1" \
     "$SOURCE_PREFIX/lib/vapoursynth" \
-    "$SOURCE_PREFIX/luarocks/lib/lua/5.1"
+    "$SOURCE_PREFIX/luarocks"
   do
-    if [[ -d "$plugin_dir" ]]; then
-      dest="$plugin_root/$(basename "$plugin_dir")"
+    if [[ -d "$runtime_dir" ]]; then
+      dest="$source_built_root/$(basename "$runtime_dir")"
       rm -rf "$dest"
       mkdir -p "$dest"
-      cp -R "$plugin_dir"/. "$dest"/
+      cp -R "$runtime_dir"/. "$dest"/
     fi
   done
 
   copy_vulkan_runtime_into_bundle
   fix_vapoursynth_bundle_refs
   copy_llvm_runtime_into_bundle
+  run_logged "mpv-sign-bundle-after-fixups" sign_bundle_after_fixups
+  run_bundle_luasocket_smoke
 }
 
 case "$phase" in

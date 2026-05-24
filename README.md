@@ -270,7 +270,7 @@ applicable.
 | opus | Source static/FFmpeg | Audited as `--enable-libopus`. |
 | ogg | Source static | Retained through Vorbis/codec dependency chain. |
 | openal-soft | Source static/mpv/FFmpeg | mpv `openal` and FFmpeg `openal` are audited. |
-| luajit | Source static/mpv | mpv uses `-Dlua=luajit`; the source-built `luajit` validation host is linked with Darwin `-export_dynamic` so LuaSocket's dynamic modules can resolve Lua C API symbols under LTO. |
+| luajit | Source static/mpv | mpv uses `-Dlua=luajit`; LuaJIT is built without LTO so protected Lua errors keep unwinding correctly, while its validation host still exports Lua C API symbols for LuaSocket dynamic modules. |
 | libvpx | Source static/FFmpeg | Audited as `--enable-libvpx`. |
 | luasocket | Source plugin exception | Built from source through LuaRocks against source-built LuaJIT and bundled as a runtime module. |
 | libwebp | Source static/FFmpeg | Audited as `--enable-libwebp`. |

@@ -190,12 +190,14 @@ runtime_audit_check_otool_refs() {
 runtime_audit_check_dynamic_files() {
   local label="$1"
   local dynamic_file_list="$2"
-  local plugin_exception_dir="${3:-}"
+  shift 2
+  local exception_dirs=("$@")
   local allowed_runtime_patterns=()
   local pattern
   local dynamic_file
   local basename
   local allowed
+  local exception_dir
   local denied_report="$AUDIT_DIR/runtime-unexpected-dynamic-files.txt"
 
   : > "$denied_report"
@@ -206,9 +208,11 @@ runtime_audit_check_dynamic_files() {
 
   while IFS= read -r dynamic_file; do
     [[ -n "$dynamic_file" ]] || continue
-    if [[ -n "$plugin_exception_dir" && "$dynamic_file" == "${plugin_exception_dir}"/* ]]; then
-      continue
-    fi
+    for exception_dir in "${exception_dirs[@]}"; do
+      if [[ -n "$exception_dir" && "$dynamic_file" == "${exception_dir}"/* ]]; then
+        continue 2
+      fi
+    done
 
     basename="$(basename "$dynamic_file")"
     allowed=0

@@ -14,6 +14,9 @@ mpv_ffmpeg_pkg_config_packages=(
   libswresample
   libswscale
 )
+mpv_patches=(
+  "$BUILDER_DIR/patch/mpv-0001-macos-bundle-luarocks-search-paths.patch"
+)
 
 create_mpv_ffmpeg_pkg_config_overlay() {
   local overlay_dir="$BUILD_ROOT/mpv-pkgconfig/ffmpeg"
@@ -113,6 +116,18 @@ assert_mpv_build_uses_ffmpeg_prefix_archives() {
   done
 }
 
+apply_mpv_patches() {
+  local patch
+
+  for patch in "${mpv_patches[@]}"; do
+    git apply --check "$patch"
+  done
+
+  for patch in "${mpv_patches[@]}"; do
+    git apply "$patch"
+  done
+}
+
 resolve_mpv_iconv_link_flags() {
   local iconv_libs
 
@@ -137,6 +152,7 @@ resolve_mpv_iconv_link_flags() {
 
 cd "$MPV_DIR"
 rm -rf build
+run_logged "mpv-apply-patches" apply_mpv_patches
 create_mpv_ffmpeg_pkg_config_overlay
 assert_mpv_ffmpeg_pkg_config_resolves_to_ffmpeg_prefix
 export CFLAGS="$CFLAGS -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3"

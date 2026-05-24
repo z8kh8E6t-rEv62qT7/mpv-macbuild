@@ -9,9 +9,10 @@ require_source_env
 
 cd "$MPV_DIR"
 bundle_binary="build/mpv.app/Contents/MacOS/mpv"
-plugin_exception_dir="build/mpv.app/Contents/PlugIns/source-built"
+source_built_exception_dir="build/mpv.app/Contents/Resources/source-built"
 
 mkdir -p "$AUDIT_DIR"
+run_logged "bundle-codesign-verify" codesign --verify --deep --strict --verbose=2 build/mpv.app
 run_logged "bundle-main-otool" bash -c '
   source "$3/common.sh"
   write_runtime_load_report "$1" > "$2"
@@ -25,7 +26,10 @@ done < "$AUDIT_DIR/bundle-dynamic-files.txt"
 
 run_logged "bundle-dynamic-otool" cat "$AUDIT_DIR/bundle-dynamic-otool.txt"
 
-runtime_audit_check_dynamic_files "mpv.app bundle" "$AUDIT_DIR/bundle-dynamic-files.txt" "$plugin_exception_dir"
+runtime_audit_check_dynamic_files \
+  "mpv.app bundle" \
+  "$AUDIT_DIR/bundle-dynamic-files.txt" \
+  "$source_built_exception_dir"
 runtime_audit_check_otool_refs \
   "mpv.app bundle" \
   "$AUDIT_DIR/bundle-otool.txt" \
@@ -37,8 +41,8 @@ if grep -F /opt/homebrew "$AUDIT_DIR/bundle-otool.txt" "$AUDIT_DIR/bundle-dynami
   exit 1
 fi
 
-if [[ -d "$plugin_exception_dir" ]]; then
-  find "$plugin_exception_dir" -type f | sort > "$AUDIT_DIR/plugin-exceptions.txt"
+if [[ -d "$source_built_exception_dir" ]]; then
+  find "$source_built_exception_dir" -type f | sort > "$AUDIT_DIR/plugin-exceptions.txt"
 else
   : > "$AUDIT_DIR/plugin-exceptions.txt"
 fi

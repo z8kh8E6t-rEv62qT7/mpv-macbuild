@@ -323,6 +323,7 @@ APPLIED_PATCHES = [
     "patch/ffmpeg-0002-avformat-spdifenc-handle-long-TrueHD-input_timing.patch",
     "patch/ffmpeg-0003-fftools-rename-dec-init.patch",
     "patch/ffmpeg-0004-avcodec-apv-parser-rename-close-callback.patch",
+    "patch/mpv-0001-macos-bundle-luarocks-search-paths.patch",
     "cmake/ports-overlay/x264/prealloc-strict-aliasing.patch",
     "cmake/ports-overlay/x264/mbtree-propagate-list-tail.patch",
     "cmake/ports-overlay/x264/cavlc-aarch64-coeff-level-run.patch",
