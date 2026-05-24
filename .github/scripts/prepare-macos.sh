@@ -43,6 +43,7 @@ brew_formulae=(
   luarocks
   meson
   mono
+  molten-vk
   nasm
   ninja
   pkgconf
@@ -51,6 +52,11 @@ brew_formulae=(
 )
 
 brew install -q "${brew_formulae[@]}"
+
+moltenvk_icd_json="$brew_prefix/etc/vulkan/icd.d/MoltenVK_icd.json"
+moltenvk_dylib="$brew_prefix/lib/libMoltenVK.dylib"
+[[ -f "$moltenvk_icd_json" ]] || die "Homebrew molten-vk did not install $moltenvk_icd_json"
+[[ -f "$moltenvk_dylib" ]] || die "Homebrew molten-vk did not install $moltenvk_dylib"
 
 source_prefix="${RUNNER_TEMP}/source-prefix"
 ffmpeg_prefix="${RUNNER_TEMP}/ffmpeg-prefix"

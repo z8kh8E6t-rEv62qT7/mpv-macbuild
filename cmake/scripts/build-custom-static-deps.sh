@@ -468,10 +468,9 @@ build_moltenvk() {
   [[ -n "$moltenvk_static" ]] || die "libMoltenVK.a was not produced by MoltenVK"
   cp "$moltenvk_static" "$SOURCE_PREFIX/lib/libMoltenVK.a"
 
-  moltenvk_dynamic="$(find "$SOURCE_ROOT/MoltenVK" -path '*MoltenVK.xcframework*' -name 'libMoltenVK*.dylib' | head -n1 || true)"
-  if [[ -n "$moltenvk_dynamic" ]]; then
-    cp "$moltenvk_dynamic" "$SOURCE_PREFIX/lib/$(basename "$moltenvk_dynamic")"
-  fi
+  moltenvk_dynamic="$(find "$SOURCE_ROOT/MoltenVK/Package" -path '*/dynamic/dylib/macOS/libMoltenVK*.dylib' | head -n1 || true)"
+  [[ -n "$moltenvk_dynamic" ]] || die "libMoltenVK.dylib was not produced by MoltenVK"
+  cp "$moltenvk_dynamic" "$SOURCE_PREFIX/lib/$(basename "$moltenvk_dynamic")"
 
   while IFS= read -r icd_json; do
     cp "$icd_json" "$SOURCE_PREFIX/share/vulkan/icd.d/$(basename "$icd_json")"
