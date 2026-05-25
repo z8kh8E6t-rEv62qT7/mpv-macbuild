@@ -58,12 +58,18 @@ copy_vulkan_runtime_into_bundle() {
   local moltenvk_library
   local moltenvk_basename="libMoltenVK.dylib"
   local copied_icd_count=0
+  local target
 
   mkdir -p "$framework_root" "$resource_root/icd.d" "$resource_root/explicit_layer.d"
 
   while IFS= read -r dylib; do
-    cp "$dylib" "$framework_root/$(basename "$dylib")"
-    chmod u+w "$framework_root/$(basename "$dylib")"
+    target="$framework_root/$(basename "$dylib")"
+    if [[ -e "$target" ]]; then
+      chmod u+w "$target" || true
+      rm -f "$target"
+    fi
+    cp "$dylib" "$target"
+    chmod u+w "$target"
   done < <(find "$FFMPEG_PREFIX/lib" -maxdepth 1 -type f \( -name 'libvulkan*.dylib' -o -name 'libMoltenVK*.dylib' \) | sort)
 
   ensure_vulkan_loader_links "$framework_root"
