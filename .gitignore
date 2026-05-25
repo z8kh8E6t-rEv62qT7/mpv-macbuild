@@ -1,4 +1,6 @@
 __pycache__/
 *.py[cod]
 build/
+!scripts/build/
+!scripts/build/*.sh
 .DS_Store
