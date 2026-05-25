@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/common.sh"
 
 require_source_env
 
@@ -308,11 +308,9 @@ collect_crash_reports() {
 }
 
 collect_symbol_diagnostics() {
-  local script_dir
   local diagnostics_script
 
-  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-  diagnostics_script="$script_dir/diagnose-ffmpeg-symbols.sh"
+  diagnostics_script="$CI_SCRIPT_ROOT/diagnostics/diagnose-ffmpeg-symbols.sh"
 
   if [[ ! -x "$diagnostics_script" ]]; then
     append_summary_note "Symbol diagnostics: script not executable: \`$diagnostics_script\`"

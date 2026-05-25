@@ -31,9 +31,14 @@ llvm_runtime_link_flags() {
     "-Wl,-needed_library,$LLVM_LIBUNWIND_DYLIB"
 }
 
+otool_load_lines() {
+  local binary="$1"
+  otool -L "$binary" | awk '/^[[:space:]]/ { print }'
+}
+
 otool_refs() {
   local binary="$1"
-  otool -L "$binary" | tail -n +2 | awk '{print $1}'
+  otool_load_lines "$binary" | awk '{ print $1 }'
 }
 
 is_mach_o() {
@@ -110,7 +115,7 @@ write_runtime_load_report() {
   local label="${2:-$target}"
 
   echo "## $label"
-  otool -L "$target" | tail -n +2 || true
+  otool_load_lines "$target" || true
   echo
   echo "## rpaths: $label"
   rpath_refs "$target" || true

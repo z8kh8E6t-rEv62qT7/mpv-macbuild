@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-source "$script_dir/common.sh"
-source "$script_dir/runtime-audit-common.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/common.sh"
+source "$CI_SCRIPT_ROOT/lib/runtime-audit-common.sh"
 
 require_source_env
 

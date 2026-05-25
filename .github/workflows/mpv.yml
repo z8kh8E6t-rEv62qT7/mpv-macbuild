@@ -53,7 +53,7 @@ jobs:
         id: nuget-cache-mode
         env:
           HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message || '' }}
-        run: bash .github/scripts/resolve-nuget-cache-mode.sh
+        run: bash scripts/cache/resolve-nuget-cache-mode.sh
 
       - name: Resolve source refs
         id: resolve
@@ -61,7 +61,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           REQUESTED_MPV_REF: ${{ github.event.inputs.mpv_ref || 'latest' }}
           REQUESTED_FFMPEG_REF: ${{ github.event.inputs.ffmpeg_ref || 'latest' }}
-        run: bash .github/scripts/resolve-refs.sh
+        run: bash scripts/build/resolve-refs.sh
 
       - name: Compute release metadata
         id: release-metadata
@@ -104,16 +104,16 @@ jobs:
           fetch-depth: 0
 
       - name: Prepare macOS build host
-        run: bash builder/.github/scripts/prepare-macos.sh
+        run: bash builder/scripts/build/prepare-macos.sh
 
       - name: Restore vcpkg binary cache
         id: vcpkg-cache-restore
         uses: actions/cache/restore@v5
         with:
           path: ${{ runner.temp }}/vcpkg-binary-cache
-          key: vcpkg-${{ runner.os }}-${{ runner.arch }}-macos15-static-m4-${{ hashFiles('builder/cmake/CMakeLists.txt', 'builder/cmake/ports-overlay/**', 'builder/cmake/triplets/**', 'builder/cmake/toolchains/**', 'builder/.github/scripts/prepare-macos.sh') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: vcpkg-${{ runner.os }}-${{ runner.arch }}-macos15-static-m4-${{ hashFiles('builder/cmake/CMakeLists.txt', 'builder/cmake/ports-overlay/**', 'builder/cmake/triplets/**', 'builder/cmake/toolchains/**', 'builder/scripts/build/prepare-macos.sh') }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            vcpkg-${{ runner.os }}-${{ runner.arch }}-macos15-static-m4-${{ hashFiles('builder/cmake/CMakeLists.txt', 'builder/cmake/ports-overlay/**', 'builder/cmake/triplets/**', 'builder/cmake/toolchains/**', 'builder/.github/scripts/prepare-macos.sh') }}-
+            vcpkg-${{ runner.os }}-${{ runner.arch }}-macos15-static-m4-${{ hashFiles('builder/cmake/CMakeLists.txt', 'builder/cmake/ports-overlay/**', 'builder/cmake/triplets/**', 'builder/cmake/toolchains/**', 'builder/scripts/build/prepare-macos.sh') }}-
             vcpkg-${{ runner.os }}-${{ runner.arch }}-macos15-static-m4-
 
       - name: Build source
@@ -121,14 +121,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           RESOLVED_FFMPEG_REF: ${{ needs.params.outputs.ffmpeg_ref }}
-        run: bash builder/.github/scripts/build-source-deps.sh
+        run: bash builder/scripts/build/build-source-deps.sh
 
       - name: Print source build logs
         if: ${{ failure() && steps.source.outcome == 'failure' }}
         run: |
-          bash builder/.github/scripts/print-superbuild-log.sh vcpkg-tool
-          bash builder/.github/scripts/print-superbuild-log.sh vcpkg-static-ports
-          bash builder/.github/scripts/print-superbuild-log.sh custom-static-deps
+          bash builder/scripts/diagnostics/print-superbuild-log.sh vcpkg-tool
+          bash builder/scripts/diagnostics/print-superbuild-log.sh vcpkg-static-ports
+          bash builder/scripts/diagnostics/print-superbuild-log.sh custom-static-deps
 
       - name: Save vcpkg binary cache
         if: ${{ always() && steps.source.outcome != 'skipped' }}
@@ -139,17 +139,17 @@ jobs:
 
       - name: Build FFmpeg
         id: ffmpeg
-        run: bash builder/.github/scripts/build-ffmpeg.sh
+        run: bash builder/scripts/build/build-ffmpeg.sh
 
       - name: Print FFmpeg build logs
         if: ${{ failure() && steps.ffmpeg.outcome == 'failure' }}
-        run: bash builder/.github/scripts/print-superbuild-log.sh ffmpeg-static
+        run: bash builder/scripts/diagnostics/print-superbuild-log.sh ffmpeg-static
 
       - name: Package FFmpeg artifact
         id: ffmpeg_artifact
         env:
           SAFE_FFMPEG_REF: ${{ needs.params.outputs.safe_ffmpeg_ref }}
-        run: bash builder/.github/scripts/package-ffmpeg-artifact.sh
+        run: bash builder/scripts/package/package-ffmpeg-artifact.sh
 
       - name: Upload FFmpeg install-prefix artifact
         uses: actions/upload-artifact@v7
@@ -160,53 +160,53 @@ jobs:
 
       - name: Smoke test FFmpeg install-prefix artifact
         id: ffmpeg-smoke
-        run: bash builder/.github/scripts/smoke-ffmpeg-artifact.sh
+        run: bash builder/scripts/smoke/smoke-ffmpeg-artifact.sh
 
       - name: Audit FFmpeg runtime dependencies
         id: ffmpeg-runtime-audit
-        run: bash builder/.github/scripts/audit-ffmpeg-runtime.sh
+        run: bash builder/scripts/audit/audit-ffmpeg-runtime.sh
 
       - name: Run full FFmpeg FATE suite
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_ffmpeg_fate }}
         id: ffmpeg-fate
-        run: bash builder/.github/scripts/run-ffmpeg-fate.sh
+        run: bash builder/scripts/build/run-ffmpeg-fate.sh
 
       - name: Configure mpv with Meson
         id: configure
         env:
           SWIFT_FLAGS: ""
-        run: bash builder/.github/scripts/configure-mpv.sh
+        run: bash builder/scripts/build/configure-mpv.sh
 
       - name: Print Meson configure log
         if: ${{ failure() && steps.configure.outcome == 'failure' }}
-        run: bash builder/.github/scripts/print-meson-log.sh configure
+        run: bash builder/scripts/diagnostics/print-meson-log.sh configure
 
       - name: Build with Meson
         id: build
-        run: bash builder/.github/scripts/build-test-bundle.sh build
+        run: bash builder/scripts/build/build-test-bundle.sh build
 
       - name: Print Meson build log
         if: ${{ failure() && steps.build.outcome == 'failure' }}
-        run: bash builder/.github/scripts/print-meson-log.sh build
+        run: bash builder/scripts/diagnostics/print-meson-log.sh build
 
       - name: Run Meson tests
         id: tests
-        run: bash builder/.github/scripts/build-test-bundle.sh test
+        run: bash builder/scripts/build/build-test-bundle.sh test
 
       - name: Print Meson test log
         if: ${{ failure() && steps.tests.outcome == 'failure' }}
-        run: bash builder/.github/scripts/print-meson-log.sh test
+        run: bash builder/scripts/diagnostics/print-meson-log.sh test
 
       - name: Create app bundle
         id: bundle
-        run: bash builder/.github/scripts/build-test-bundle.sh bundle
+        run: bash builder/scripts/build/build-test-bundle.sh bundle
 
       - name: Package mpv.app artifact
         id: artifact
         env:
           SAFE_MPV_REF: ${{ needs.params.outputs.safe_mpv_ref }}
           SAFE_FFMPEG_REF: ${{ needs.params.outputs.safe_ffmpeg_ref }}
-        run: bash builder/.github/scripts/package-artifact.sh
+        run: bash builder/scripts/package/package-artifact.sh
 
       - name: Upload mpv.app artifact
         uses: actions/upload-artifact@v7
@@ -217,14 +217,14 @@ jobs:
 
       - name: Audit app bundle dependencies
         id: bundle-audit
-        run: bash builder/.github/scripts/audit-bundle.sh
+        run: bash builder/scripts/audit/audit-bundle.sh
 
       - name: Audit retained packages and source-built features
         id: audit
         env:
           RESOLVED_MPV_REF: ${{ needs.params.outputs.mpv_ref }}
           RESOLVED_FFMPEG_REF: ${{ needs.params.outputs.ffmpeg_ref }}
-        run: bash builder/.github/scripts/audit-packages.sh
+        run: bash builder/scripts/audit/audit-packages.sh
 
       - name: Upload package audit
         if: ${{ always() }}
@@ -236,7 +236,7 @@ jobs:
 
       - name: Print CI diagnostics
         if: ${{ failure() }}
-        run: bash builder/.github/scripts/print-ci-diagnostics.sh
+        run: bash builder/scripts/diagnostics/print-ci-diagnostics.sh
 
       - name: Upload full audit
         if: ${{ always() }}
@@ -292,7 +292,7 @@ jobs:
           RELEASE_TITLE: ${{ needs.params.outputs.release_title }}
           MPV_RELEASE_ASSET: release-assets/mpv/${{ needs.build.outputs.artifact_name }}.tar.gz
           FFMPEG_RELEASE_ASSET: release-assets/ffmpeg/${{ needs.build.outputs.ffmpeg_artifact_name }}.tar.gz
-        run: bash .github/scripts/publish-release.sh
+        run: bash scripts/release/publish-release.sh
 
   maintain-nuget-cache:
     name: Maintain NuGet cache
@@ -318,4 +318,4 @@ jobs:
       - name: Cleanup old NuGet package versions
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: bash .github/scripts/cleanup-nuget-cache.sh
+        run: bash scripts/cache/cleanup-nuget-cache.sh

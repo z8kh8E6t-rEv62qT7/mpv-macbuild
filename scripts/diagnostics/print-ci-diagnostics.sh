@@ -1,15 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-if [[ -f "$script_dir/common.sh" ]]; then
-  # shellcheck source=common.sh
-  source "$script_dir/common.sh"
-else
-  WORKSPACE_DIR="${GITHUB_WORKSPACE:-$(pwd)}"
-  AUDIT_DIR="${AUDIT_DIR:-$WORKSPACE_DIR/audit}"
-fi
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/common.sh"
 
 print_group() {
   local title="$1"
