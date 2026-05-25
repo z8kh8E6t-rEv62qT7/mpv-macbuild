@@ -6,12 +6,12 @@ if [[ -z "${CI_SCRIPT_DIR:-}" ]]; then
 fi
 
 runtime_audit_allowed_runtime_patterns() {
-  PYTHONPATH="$CI_SCRIPT_DIR" python3 -c \
+  PYTHONPATH="$CI_SCRIPT_ROOT/lib" python3 -c \
     'import ci_matrix; print("\n".join(ci_matrix.BUNDLE_ALLOWED_RUNTIME_EXCEPTION_PATTERNS))'
 }
 
 runtime_audit_denied_dylib_patterns() {
-  PYTHONPATH="$CI_SCRIPT_DIR" python3 -c \
+  PYTHONPATH="$CI_SCRIPT_ROOT/lib" python3 -c \
     'import ci_matrix; print("\n".join(ci_matrix.BUNDLE_DENY_DYLIB_PATTERNS))'
 }
 

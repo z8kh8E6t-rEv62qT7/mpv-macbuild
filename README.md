@@ -113,8 +113,8 @@ Release behavior:
   failures. Per-package logs are written under `audit/logs/`, and the workflow
   prints a diagnostics dump on failure.
 - CI build orchestration stays in Bash, while package-retention policy and
-  audit tables live in `.github/scripts/ci_matrix.py` and
-  `.github/scripts/audit_packages.py`.
+  audit tables live in `scripts/lib/ci_matrix.py` and
+  `scripts/audit/audit_packages.py`.
 - Source-built C/C++ uses Homebrew LLVM with thin LTO, PIC, and M4-only CPU
   tuning:
   `-flto=thin -O3 -pipe -fPIC -march=armv8.7-a -mcpu=apple-m4 -mtune=apple-m4`.
@@ -348,8 +348,8 @@ applicable.
 Local checks are limited to non-build validation:
 
 ```sh
-for f in .github/scripts/*.sh cmake/scripts/*.sh; do bash -n "$f"; done
-python3 -m py_compile .github/scripts/*.py
+find scripts cmake/scripts -name '*.sh' -print0 | xargs -0 -n1 bash -n
+find scripts -name '*.py' -print0 | xargs -0 python3 -m py_compile
 ruby -e 'require "yaml"; YAML.load_file(".github/workflows/mpv.yml")'
 cmake -S cmake -B /tmp/mpv-macbuild-superbuild-check \
   -DBUILDER_DIR="$PWD" \

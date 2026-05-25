@@ -2,7 +2,8 @@
 set -euo pipefail
 
 CI_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BUILDER_DIR="$(cd "$CI_SCRIPT_DIR/../.." && pwd)"
+CI_SCRIPT_ROOT="$(cd "$CI_SCRIPT_DIR/.." && pwd)"
+BUILDER_DIR="$(cd "$CI_SCRIPT_ROOT/.." && pwd)"
 WORKSPACE_DIR="${GITHUB_WORKSPACE:-$BUILDER_DIR}"
 MPV_DIR="${MPV_DIR:-$WORKSPACE_DIR/mpv}"
 AUDIT_DIR="${AUDIT_DIR:-$WORKSPACE_DIR/audit}"

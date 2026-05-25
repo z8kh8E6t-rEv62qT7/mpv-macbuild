@@ -6,7 +6,7 @@ die() {
   exit 1
 }
 
-source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/.github/scripts/runtime-fixups.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/scripts/lib/runtime-fixups.sh"
 
 ci_group() {
   local title="$1"
