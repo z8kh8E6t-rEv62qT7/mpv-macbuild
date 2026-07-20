@@ -48,9 +48,11 @@ Release behavior:
 
 - Every `push` to `master` runs the full macOS build.
 - `workflow_dispatch` runs the full build, enables NuGet writeback, and
-  publishes or updates a GitHub Release.
+  publishes or updates a GitHub Release. NuGet expiration defaults to
+  `dry-run`; select `delete` explicitly to remove expired packages.
 - A `push` only publishes or updates a GitHub Release when the head commit
-  message contains `[release]`.
+  message contains `[release]`; these release pushes automatically delete
+  expired NuGet packages after a successful write-enabled source build.
 
 ## Workflow structure
 
@@ -68,8 +70,9 @@ Release behavior:
   build and uploads the two final tarballs to the GitHub Release identified by
   `mpv-<mpv-ref>-ffmpeg-<ffmpeg-ref>-macos15-arm64`.
 - `maintain-nuget-cache` runs on `ubuntu-latest` after source deps succeeded
-  and NuGet writes were enabled; it prunes stale GitHub Packages NuGet
-  versions but does not block the release pipeline if cleanup fails.
+  and NuGet writes were enabled. It reports or deletes repository-linked
+  GitHub Packages NuGet packages whose `updated_at` timestamp is more than 30
+  days old, but does not block the release pipeline if maintenance fails.
 
 ## Build model
 
@@ -98,13 +101,17 @@ Release behavior:
   vcpkg ports can be reused by the next run. This Actions cache remains a
   best-effort accelerator; the workflow does not add a separate keep-alive job
   or guarantee long-term retention beyond GitHub's normal cache policy.
-- The workflow also exposes a persistent GitHub Packages NuGet cache for vcpkg:
+- The workflow also exposes a GitHub Packages NuGet cache for vcpkg:
   ordinary `push` runs read from NuGet only, while `workflow_dispatch` and
   `push` commits tagged with `[release]` enable `readwrite` mode so vcpkg can
   publish back into the NuGet cache.
-- Successful write-enabled runs automatically delete stale NuGet package
-  versions and keep only the latest version for each vcpkg-generated NuGet
-  package name associated with this repository.
+- NuGet maintenance uses a fixed package-level 30-day TTL. The manual workflow
+  defaults to reporting expired packages without deleting them, while a
+  manually selected `delete` action and `[release]` pushes remove each expired
+  package together with all of its versions.
+- GitHub Packages does not expose a last-download timestamp through this API.
+  The TTL is therefore based on package `updated_at`, which records publication
+  or metadata updates and is not refreshed when a build consumes the cache.
 - Actions cache and NuGet cache are intentionally treated differently:
   `actions/cache` speeds up rebuilds when available, while GitHub Packages
   NuGet is the persistence layer this workflow explicitly maintains.

@@ -161,7 +161,6 @@ def main() -> int:
     ffmpeg_prefix = env["FFMPEG_PREFIX"]
     vcpkg_target_prefix = env["VCPKG_TARGET_PREFIX"]
     github_summary = Path(env["GITHUB_STEP_SUMMARY"])
-    nuget_cleanup_report = audit_dir / "nuget-cleanup.json"
     libbluray_archive = Path(vcpkg_target_prefix) / "lib" / "libbluray.a"
 
     audit_dir.mkdir(parents=True, exist_ok=True)
@@ -217,10 +216,6 @@ def main() -> int:
     audit.add(f"- Cargo target linker: `{env.get('CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER', '')}`")
     audit.add(f"- Cargo target Rust flags: `{env.get('CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS', '')}`")
     audit.add(f"- Cargo Rust flags: `{env.get('RUSTFLAGS', '')}`")
-    if nuget_cleanup_report.exists():
-        cleanup_data = json.loads(nuget_cleanup_report.read_text(encoding="utf-8"))
-        audit.add(f"- NuGet cleanup managed packages: {cleanup_data.get('managed_packages', 0)}")
-        audit.add(f"- NuGet cleanup deleted stale versions: {cleanup_data.get('deleted_version_count', 0)}")
     audit.add()
     audit.add("## vcpkg static triplet flags")
     audit.add()

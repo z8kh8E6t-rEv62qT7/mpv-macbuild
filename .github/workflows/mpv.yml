@@ -15,6 +15,14 @@ on:
         description: "FFmpeg tag, branch, or commit to build. Use latest for the newest release tag."
         required: false
         default: latest
+      nuget_cleanup_action:
+        description: "NuGet cache maintenance action after a successful write-enabled build."
+        required: false
+        type: choice
+        options:
+          - dry-run
+          - delete
+        default: dry-run
       run_ffmpeg_fate:
         description: "Run the full upstream FFmpeg FATE suite after building FFmpeg."
         required: false
@@ -43,6 +51,7 @@ jobs:
       nuget_source_name: ${{ steps.nuget-cache-mode.outputs.source_name }}
       release_enabled: ${{ steps.nuget-cache-mode.outputs.release_enabled }}
       nuget_write_enabled: ${{ steps.nuget-cache-mode.outputs.nuget_write_enabled }}
+      nuget_cleanup_action: ${{ steps.nuget-cache-mode.outputs.nuget_cleanup_action }}
       release_tag: ${{ steps.release-metadata.outputs.tag }}
       release_title: ${{ steps.release-metadata.outputs.title }}
     steps:
@@ -53,6 +62,7 @@ jobs:
         id: nuget-cache-mode
         env:
           HEAD_COMMIT_MESSAGE: ${{ github.event.head_commit.message || '' }}
+          REQUESTED_NUGET_CLEANUP_ACTION: ${{ github.event.inputs.nuget_cleanup_action || 'dry-run' }}
         run: bash scripts/cache/resolve-nuget-cache-mode.sh
 
       - name: Resolve source refs
@@ -327,16 +337,16 @@ jobs:
       contents: read
       packages: write
     env:
-      AUDIT_DIR: ${{ github.workspace }}/audit
       NUGET_CACHE_MODE: ${{ needs.params.outputs.nuget_cache_mode }}
       NUGET_CACHE_REASON: ${{ needs.params.outputs.nuget_cache_reason }}
       NUGET_FEED_URL: ${{ needs.params.outputs.nuget_feed_url }}
       NUGET_SOURCE_NAME: ${{ needs.params.outputs.nuget_source_name }}
+      NUGET_CLEANUP_ACTION: ${{ needs.params.outputs.nuget_cleanup_action }}
     steps:
       - name: Checkout builder repository
         uses: actions/checkout@v6
 
-      - name: Cleanup old NuGet package versions
+      - name: Maintain expired NuGet packages
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: bash scripts/cache/cleanup-nuget-cache.sh
