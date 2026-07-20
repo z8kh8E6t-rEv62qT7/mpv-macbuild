@@ -192,7 +192,7 @@ STATIC_PKG_CONFIG_PACKAGES = [
 
 FFMPEG_FLAGS = [
     ("static", "--enable-static"),
-    ("no shared libraries", "--disable-shared"),
+    ("shared libraries", "--enable-shared"),
     ("static pkg-config", "--pkg-config-flags=--static"),
     ("pic", "--enable-pic"),
     ("hardcoded tables", "--enable-hardcoded-tables"),

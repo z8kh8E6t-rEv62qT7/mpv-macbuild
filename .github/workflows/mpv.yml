@@ -87,8 +87,10 @@ jobs:
       source_deps_succeeded: ${{ steps.build-outputs.outputs.source_deps_succeeded }}
       artifact_name: ${{ steps.build-outputs.outputs.artifact_name }}
       artifact_path: ${{ steps.build-outputs.outputs.artifact_path }}
-      ffmpeg_artifact_name: ${{ steps.build-outputs.outputs.ffmpeg_artifact_name }}
-      ffmpeg_artifact_path: ${{ steps.build-outputs.outputs.ffmpeg_artifact_path }}
+      ffmpeg_gpl_artifact_name: ${{ steps.build-outputs.outputs.ffmpeg_gpl_artifact_name }}
+      ffmpeg_gpl_artifact_path: ${{ steps.build-outputs.outputs.ffmpeg_gpl_artifact_path }}
+      ffmpeg_lgpl_artifact_name: ${{ steps.build-outputs.outputs.ffmpeg_lgpl_artifact_name }}
+      ffmpeg_lgpl_artifact_path: ${{ steps.build-outputs.outputs.ffmpeg_lgpl_artifact_path }}
     steps:
       - name: Checkout builder repository
         uses: actions/checkout@v6
@@ -129,6 +131,7 @@ jobs:
           bash builder/scripts/diagnostics/print-superbuild-log.sh vcpkg-tool
           bash builder/scripts/diagnostics/print-superbuild-log.sh vcpkg-static-ports
           bash builder/scripts/diagnostics/print-superbuild-log.sh custom-static-deps
+          bash builder/scripts/diagnostics/print-superbuild-log.sh vcpkg-lgpl-optional-ports
 
       - name: Save vcpkg binary cache
         if: ${{ always() && steps.source.outcome != 'skipped' }}
@@ -143,7 +146,9 @@ jobs:
 
       - name: Print FFmpeg build logs
         if: ${{ failure() && steps.ffmpeg.outcome == 'failure' }}
-        run: bash builder/scripts/diagnostics/print-superbuild-log.sh ffmpeg-static
+        run: |
+          bash builder/scripts/diagnostics/print-superbuild-log.sh ffmpeg-static
+          bash builder/scripts/diagnostics/print-superbuild-log.sh ffmpeg-lgpl
 
       - name: Package FFmpeg artifact
         id: ffmpeg_artifact
@@ -151,11 +156,18 @@ jobs:
           SAFE_FFMPEG_REF: ${{ needs.params.outputs.safe_ffmpeg_ref }}
         run: bash builder/scripts/package/package-ffmpeg-artifact.sh
 
-      - name: Upload FFmpeg install-prefix artifact
+      - name: Upload GPLv3+nonfree FFmpeg artifact
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ steps.ffmpeg_artifact.outputs.ffmpeg_name }}
-          path: ${{ steps.ffmpeg_artifact.outputs.ffmpeg_path }}
+          name: ${{ steps.ffmpeg_artifact.outputs.ffmpeg_gpl_name }}
+          path: ${{ steps.ffmpeg_artifact.outputs.ffmpeg_gpl_path }}
+          if-no-files-found: error
+
+      - name: Upload LGPL FFmpeg artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ steps.ffmpeg_artifact.outputs.ffmpeg_lgpl_name }}
+          path: ${{ steps.ffmpeg_artifact.outputs.ffmpeg_lgpl_path }}
           if-no-files-found: error
 
       - name: Smoke test FFmpeg install-prefix artifact
@@ -257,8 +269,10 @@ jobs:
           printf 'source_deps_succeeded=%s\n' "$source_deps_succeeded" >> "$GITHUB_OUTPUT"
           printf 'artifact_name=%s\n' "${{ steps.artifact.outputs.name }}" >> "$GITHUB_OUTPUT"
           printf 'artifact_path=%s\n' "${{ steps.artifact.outputs.path }}" >> "$GITHUB_OUTPUT"
-          printf 'ffmpeg_artifact_name=%s\n' "${{ steps.ffmpeg_artifact.outputs.ffmpeg_name }}" >> "$GITHUB_OUTPUT"
-          printf 'ffmpeg_artifact_path=%s\n' "${{ steps.ffmpeg_artifact.outputs.ffmpeg_path }}" >> "$GITHUB_OUTPUT"
+          printf 'ffmpeg_gpl_artifact_name=%s\n' "${{ steps.ffmpeg_artifact.outputs.ffmpeg_gpl_name }}" >> "$GITHUB_OUTPUT"
+          printf 'ffmpeg_gpl_artifact_path=%s\n' "${{ steps.ffmpeg_artifact.outputs.ffmpeg_gpl_path }}" >> "$GITHUB_OUTPUT"
+          printf 'ffmpeg_lgpl_artifact_name=%s\n' "${{ steps.ffmpeg_artifact.outputs.ffmpeg_lgpl_name }}" >> "$GITHUB_OUTPUT"
+          printf 'ffmpeg_lgpl_artifact_path=%s\n' "${{ steps.ffmpeg_artifact.outputs.ffmpeg_lgpl_path }}" >> "$GITHUB_OUTPUT"
 
   publish-release:
     name: Publish release
@@ -279,11 +293,17 @@ jobs:
           name: ${{ needs.build.outputs.artifact_name }}
           path: release-assets/mpv
 
-      - name: Download FFmpeg install-prefix artifact
+      - name: Download GPLv3+nonfree FFmpeg artifact
         uses: actions/download-artifact@v5
         with:
-          name: ${{ needs.build.outputs.ffmpeg_artifact_name }}
-          path: release-assets/ffmpeg
+          name: ${{ needs.build.outputs.ffmpeg_gpl_artifact_name }}
+          path: release-assets/ffmpeg-gpl
+
+      - name: Download LGPL FFmpeg artifact
+        uses: actions/download-artifact@v5
+        with:
+          name: ${{ needs.build.outputs.ffmpeg_lgpl_artifact_name }}
+          path: release-assets/ffmpeg-lgpl
 
       - name: Publish GitHub release
         env:
@@ -291,7 +311,8 @@ jobs:
           RELEASE_TAG: ${{ needs.params.outputs.release_tag }}
           RELEASE_TITLE: ${{ needs.params.outputs.release_title }}
           MPV_RELEASE_ASSET: release-assets/mpv/${{ needs.build.outputs.artifact_name }}.tar.gz
-          FFMPEG_RELEASE_ASSET: release-assets/ffmpeg/${{ needs.build.outputs.ffmpeg_artifact_name }}.tar.gz
+          FFMPEG_GPL_RELEASE_ASSET: release-assets/ffmpeg-gpl/${{ needs.build.outputs.ffmpeg_gpl_artifact_name }}.tar.xz
+          FFMPEG_LGPL_RELEASE_ASSET: release-assets/ffmpeg-lgpl/${{ needs.build.outputs.ffmpeg_lgpl_artifact_name }}.tar.xz
         run: bash scripts/release/publish-release.sh
 
   maintain-nuget-cache:

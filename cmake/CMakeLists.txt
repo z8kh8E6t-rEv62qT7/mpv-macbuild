@@ -9,12 +9,13 @@ find_program(GIT_EXECUTABLE git REQUIRED)
 set(BUILDER_DIR "" CACHE PATH "Checked out builder repository path")
 set(SOURCE_PREFIX "" CACHE PATH "Install prefix for source-built dependencies")
 set(FFMPEG_PREFIX "" CACHE PATH "Install prefix for source-built FFmpeg")
+set(FFMPEG_LGPL_PREFIX "" CACHE PATH "Install prefix for LGPL shared FFmpeg")
 set(SOURCE_ROOT "" CACHE PATH "Source checkout root")
 set(BUILD_ROOT "" CACHE PATH "Build root")
 set(AUDIT_DIR "" CACHE PATH "CI audit and log output directory")
 set(FFMPEG_REF "" CACHE STRING "FFmpeg tag, branch, or commit")
 
-foreach(required BUILDER_DIR SOURCE_PREFIX FFMPEG_PREFIX SOURCE_ROOT BUILD_ROOT AUDIT_DIR FFMPEG_REF)
+foreach(required BUILDER_DIR SOURCE_PREFIX FFMPEG_PREFIX FFMPEG_LGPL_PREFIX SOURCE_ROOT BUILD_ROOT AUDIT_DIR FFMPEG_REF)
   if(NOT ${required})
     message(FATAL_ERROR "${required} is required")
   endif()
@@ -30,6 +31,7 @@ set(SUPERBUILD_ENV
   "BUILDER_DIR=${BUILDER_DIR}"
   "SOURCE_PREFIX=${SOURCE_PREFIX}"
   "FFMPEG_PREFIX=${FFMPEG_PREFIX}"
+  "FFMPEG_LGPL_PREFIX=${FFMPEG_LGPL_PREFIX}"
   "SOURCE_ROOT=${SOURCE_ROOT}"
   "BUILD_ROOT=${BUILD_ROOT}"
   "AUDIT_DIR=${AUDIT_DIR}"
@@ -190,6 +192,18 @@ set(VCPKG_STATIC_PORTS
   zstd
 )
 
+set(VCPKG_LGPL_OPTIONAL_PORTS
+  celt
+  codec2
+  gsm
+  lc3
+  lcevc-dec
+  svt-jpeg-xs
+  uavs3d
+  xevd
+  zvbi
+)
+
 ExternalProject_Add(vcpkg-tool
   PREFIX "${BUILD_ROOT}/superbuild/vcpkg-tool"
   GIT_REPOSITORY https://github.com/microsoft/vcpkg.git
@@ -228,6 +242,19 @@ ExternalProject_Add(custom-static-deps
   DEPENDS vcpkg-static-ports
 )
 
+ExternalProject_Add(vcpkg-lgpl-optional-ports
+  PREFIX "${BUILD_ROOT}/superbuild/vcpkg-lgpl-optional-ports"
+  DOWNLOAD_COMMAND ""
+  UPDATE_COMMAND ""
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND
+    "${CMAKE_COMMAND}" -E env ${VCPKG_INSTALL_ENV}
+    "${BASH_EXECUTABLE}" "${CMAKE_CURRENT_LIST_DIR}/scripts/run-vcpkg-install-optional.sh"
+      ${VCPKG_LGPL_OPTIONAL_PORTS}
+  INSTALL_COMMAND ""
+  DEPENDS vcpkg-static-ports
+)
+
 ExternalProject_Add(ffmpeg-static
   PREFIX "${BUILD_ROOT}/superbuild/ffmpeg-static"
   DOWNLOAD_COMMAND ""
@@ -240,4 +267,17 @@ ExternalProject_Add(ffmpeg-static
   DEPENDS custom-static-deps
 )
 
+ExternalProject_Add(ffmpeg-lgpl
+  PREFIX "${BUILD_ROOT}/superbuild/ffmpeg-lgpl"
+  DOWNLOAD_COMMAND ""
+  UPDATE_COMMAND ""
+  CONFIGURE_COMMAND ""
+  BUILD_COMMAND
+    "${CMAKE_COMMAND}" -E env ${SUPERBUILD_ENV}
+    "${BASH_EXECUTABLE}" "${CMAKE_CURRENT_LIST_DIR}/scripts/build-ffmpeg-lgpl.sh"
+  INSTALL_COMMAND ""
+  DEPENDS vcpkg-lgpl-optional-ports
+)
+
 add_custom_target(source-static-deps DEPENDS custom-static-deps)
+add_custom_target(source-lgpl-optional-deps DEPENDS vcpkg-lgpl-optional-ports)

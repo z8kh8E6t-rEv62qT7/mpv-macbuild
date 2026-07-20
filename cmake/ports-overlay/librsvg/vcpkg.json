@@ -1,0 +1,33 @@
+{
+  "name": "librsvg",
+  "version": "2.62.3",
+  "description": "A library to render Scalable Vector Graphics (SVG)",
+  "homepage": "https://gitlab.gnome.org/GNOME/librsvg",
+  "license": "LGPL-2.1-or-later",
+  "dependencies": [
+    {
+      "name": "cairo",
+      "features": [
+        "gobject"
+      ]
+    },
+    "dav1d",
+    "fontconfig",
+    "freetype",
+    "glib",
+    {
+      "name": "glib",
+      "host": true
+    },
+    "harfbuzz",
+    {
+      "name": "libxml2",
+      "default-features": false
+    },
+    "pango",
+    {
+      "name": "vcpkg-tool-meson",
+      "host": true
+    }
+  ]
+}

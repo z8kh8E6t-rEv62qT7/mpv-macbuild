@@ -79,8 +79,9 @@ configure_ffmpeg() {
     --enable-hardcoded-tables \
     --disable-debug \
     --enable-stripping \
-    --disable-shared \
+    --enable-shared \
     --enable-static \
+    --install-name-dir=@rpath \
     --enable-pthreads \
     --disable-os2threads \
     --disable-w32threads \

@@ -140,7 +140,7 @@ Release behavior:
   that spelling on arm64 Darwin.
 - `-fno-exceptions -fno-rtti` are scoped to mpv/FFmpeg C++ flags only, not
   global third-party dependency builds.
-- FFmpeg is configured with `--disable-shared`, `--enable-static`,
+- The GPLv3+nonfree FFmpeg build is configured with `--enable-shared`, `--enable-static`,
   `--pkg-config-flags=--static`, `--enable-pic`, VideoToolbox, AudioToolbox,
   OpenCL, Vulkan, and the retained codec/filter extensions; mpv Meson uses
   `-Dprefer_static=true`.
@@ -150,11 +150,10 @@ Release behavior:
   `libiconv` port is an empty wrapper on this target. LuaSocket, VapourSynth,
   and frei0r are source-built plugin/runtime exceptions; VapourSynth keeps
   `libvsscript.dylib` dynamic but rewrites it to `@rpath` for FFmpeg and mpv.
-- Vulkan is the only non-plugin third-party dynamic runtime exception:
-  `vulkan-loader` and MoltenVK are source-built, bundled into `mpv.app`, and
-  also copied into the FFmpeg install-prefix artifact.
-- FFmpeg is configured with `--enable-nonfree` for `libfdk-aac`; produced
-  artifacts carry that nonfree FFmpeg caveat.
+- The FFmpeg command-line package intentionally carries the seven shared
+  FFmpeg libraries. Vulkan-loader and MoltenVK remain the non-plugin
+  third-party runtime exceptions and are bundled where required.
+- FFmpeg is configured with `--enable-nonfree` for `libfdk-aac`.
 
 Custom source-built and overlay-managed components include:
 
@@ -207,10 +206,15 @@ Artifacts:
 
 - `mpv-<mpv-ref>-ffmpeg-<ffmpeg-ref>-static-nonfree-macos-15-arm64`:
   compressed `mpv.app`.
-- `ffmpeg-<ffmpeg-ref>-static-nonfree-m4-macos-15-arm64`: compressed FFmpeg
-  install prefix from `make install`, including `ffmpeg`, `ffprobe`, `ffplay`,
-  headers, libraries, and pkg-config files. The workflow uploads this Actions
-  artifact immediately after `Build FFmpeg`, then smoke-tests it in a clean
+- `ffmpeg-gplv3-nonfree-macos15-arm64.tar.xz`: GPLv3+nonfree FFmpeg package
+  rooted at `ffmpeg-gplv3-nonfree/`. It includes the three command-line tools,
+  seven shared FFmpeg libraries, headers, relocatable pkg-config files, and
+  their runtime closure; static archives remain internal for the mpv build.
+- `ffmpeg-lgpl-macos15-arm64.tar.xz`: strict LGPL FFmpeg package rooted at
+  `ffmpeg-lgpl/`, with the same shared-library layout and mandatory JXL/SVG
+  decoding through libjxl and librsvg 2.62.3. The workflow uploads both FFmpeg
+  Actions artifacts immediately after `Build FFmpeg`, then smoke-tests the
+  GPLv3+nonfree build in a clean
   dyld environment and audits runtime dependencies. The smoke test includes
   x264 default-encoding regression cases so AArch64 assembly/runtime issues are
   caught before mpv starts. Later smoke, audit, or mpv failures do not remove
@@ -255,7 +259,7 @@ applicable.
 | Package | macOS retention | Notes |
 | --- | --- | --- |
 | mpv | Source | Checked out from `mpv-player/mpv` at `mpv_ref`; linked with static third-party deps where possible. |
-| FFmpeg | Source static | Built from `ffmpeg_ref`, installed to its own FFmpeg prefix, and audited with `--enable-static --disable-shared --pkg-config-flags=--static`. |
+| FFmpeg | Source static + shared | The GPLv3+nonfree profile keeps static archives internally for mpv while its command-line tools link the seven shared FFmpeg libraries. The independent public LGPL profile is shared-only. |
 | libass | vcpkg overlay static | Repo-local overlay keeps `rcombs/libass` `threading` plus the dyphire subtitle patch while moving the package onto the vcpkg cache path. |
 | libplacebo | Source static | Built from HEAD with Vulkan, shaderc, LCMS, dovi, and libdovi enabled, plus temporary upstream MR !850/!852 cherry-picks for dyphire alignment. |
 | vulkan-header | Source static/header | `Vulkan-Headers` is source-built from the same SDK tag as `Vulkan-Loader` and installed into the source prefix. |

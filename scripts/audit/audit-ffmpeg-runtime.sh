@@ -50,10 +50,14 @@ fi
 
 run_logged "ffmpeg-local-close-symbols" cat "$local_close_symbols"
 
-runtime_audit_check_dynamic_files \
-  "FFmpeg install prefix" \
-  "$AUDIT_DIR/ffmpeg-runtime-dynamic-files.txt" \
-  "$FFMPEG_PREFIX/lib/vapoursynth"
+for library in avcodec avdevice avfilter avformat avutil swresample swscale; do
+  find "$FFMPEG_PREFIX/lib" -maxdepth 1 -name "lib${library}*.dylib" -print -quit | grep -q . \
+    || die "missing shared FFmpeg library: lib${library}"
+  for ffmpeg_tool in "${ffmpeg_tools[@]}"; do
+    otool -L "$ffmpeg_tool" | grep -E "lib${library}[.][0-9]+[.]dylib" >/dev/null \
+      || die "$(basename "$ffmpeg_tool") does not dynamically link lib${library}"
+  done
+done
 runtime_audit_check_otool_refs \
   "FFmpeg install prefix" \
   "$AUDIT_DIR/ffmpeg-prefix-otool.txt"

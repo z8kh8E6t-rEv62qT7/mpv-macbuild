@@ -60,6 +60,7 @@ moltenvk_dylib="$brew_prefix/lib/libMoltenVK.dylib"
 
 source_prefix="${RUNNER_TEMP}/source-prefix"
 ffmpeg_prefix="${RUNNER_TEMP}/ffmpeg-prefix"
+ffmpeg_lgpl_prefix="${RUNNER_TEMP}/ffmpeg-lgpl-prefix"
 source_root="${RUNNER_TEMP}/sources"
 build_root="${RUNNER_TEMP}/build"
 python_venv="${RUNNER_TEMP}/python-venv"
@@ -80,10 +81,12 @@ macosx_deployment_target="15.0"
 mkdir -p \
   "$source_prefix" \
   "$ffmpeg_prefix" \
+  "$ffmpeg_lgpl_prefix" \
   "$source_root" \
   "$build_root" \
   "$source_prefix/lib/pkgconfig" \
   "$ffmpeg_prefix/lib/pkgconfig" \
+  "$ffmpeg_lgpl_prefix/lib/pkgconfig" \
   "$vcpkg_binary_cache"
 
 mkdir -p "$tool_root"
@@ -125,6 +128,7 @@ fi
 
 export SOURCE_PREFIX="$source_prefix"
 export FFMPEG_PREFIX="$ffmpeg_prefix"
+export FFMPEG_LGPL_PREFIX="$ffmpeg_lgpl_prefix"
 export SOURCE_ROOT="$source_root"
 export BUILD_ROOT="$build_root"
 export PYTHON_VENV="$python_venv"
@@ -219,6 +223,7 @@ export RUSTFLAGS="$CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS"
 {
   echo "SOURCE_PREFIX=$SOURCE_PREFIX"
   echo "FFMPEG_PREFIX=$FFMPEG_PREFIX"
+  echo "FFMPEG_LGPL_PREFIX=$FFMPEG_LGPL_PREFIX"
   echo "SOURCE_ROOT=$SOURCE_ROOT"
   echo "BUILD_ROOT=$BUILD_ROOT"
   echo "PYTHON_VENV=$PYTHON_VENV"

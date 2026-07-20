@@ -11,6 +11,7 @@ AUDIT_DIR="${AUDIT_DIR:-$WORKSPACE_DIR/audit}"
 if [[ -n "${RUNNER_TEMP:-}" ]]; then
   SOURCE_PREFIX="${SOURCE_PREFIX:-$RUNNER_TEMP/source-prefix}"
   FFMPEG_PREFIX="${FFMPEG_PREFIX:-$RUNNER_TEMP/ffmpeg-prefix}"
+  FFMPEG_LGPL_PREFIX="${FFMPEG_LGPL_PREFIX:-$RUNNER_TEMP/ffmpeg-lgpl-prefix}"
   SOURCE_ROOT="${SOURCE_ROOT:-$RUNNER_TEMP/sources}"
   BUILD_ROOT="${BUILD_ROOT:-$RUNNER_TEMP/build}"
 fi
@@ -84,6 +85,23 @@ create_clean_tar_gz() {
     -czf "$archive" "$@"
 }
 
+create_clean_tar_xz() {
+  local archive="$1"
+  shift
+
+  env COPYFILE_DISABLE=1 tar \
+    --exclude='.DS_Store' \
+    --exclude='./.DS_Store' \
+    --exclude='*/.DS_Store' \
+    --exclude='._*' \
+    --exclude='./._*' \
+    --exclude='*/._*' \
+    --exclude='__MACOSX' \
+    --exclude='./__MACOSX' \
+    --exclude='*/__MACOSX' \
+    -cJf "$archive" "$@"
+}
+
 remove_macos_metadata() {
   local root
 
@@ -105,6 +123,7 @@ require_source_env() {
   local required=(
     SOURCE_PREFIX
     FFMPEG_PREFIX
+    FFMPEG_LGPL_PREFIX
     SOURCE_ROOT
     BUILD_ROOT
     VCPKG_INSTALLED_DIR

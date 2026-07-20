@@ -10,3 +10,6 @@ superbuild_dir="$BUILD_ROOT/source-superbuild"
 
 run_logged "cmake-build-ffmpeg-static" \
   cmake --build "$superbuild_dir" --target ffmpeg-static --verbose
+
+run_logged "cmake-build-ffmpeg-lgpl" \
+  cmake --build "$superbuild_dir" --target ffmpeg-lgpl --verbose
