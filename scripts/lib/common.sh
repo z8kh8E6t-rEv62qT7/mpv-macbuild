@@ -179,6 +179,9 @@ require_source_env() {
     LDFLAGS
     SOURCE_LDFLAGS
     LD64_LLD
+    RUSTC
+    MPV_REAL_RUSTC
+    MPV_RUSTC_DIAGNOSTIC_LOG
   )
   local name
 

@@ -76,6 +76,9 @@ nuget_config_path="${RUNNER_TEMP}/nuget.config"
 llvm_prefix="$(brew --prefix llvm)"
 lld_prefix="$(brew --prefix lld)"
 rust_prefix="$(brew --prefix rust)"
+real_rustc="${rust_prefix}/bin/rustc"
+rustc_wrapper="${BUILDER_DIR}/scripts/tools/rustc-diagnostic-wrapper.sh"
+rustc_diagnostic_log="${AUDIT_DIR}/logs/rustc-probe-failure.log"
 ld64_lld="${lld_prefix}/bin/ld64.lld"
 macosx_deployment_target="15.0"
 
@@ -147,7 +150,9 @@ export CMAKE_OSX_DEPLOYMENT_TARGET="$macosx_deployment_target"
 export LLVM_PREFIX="$llvm_prefix"
 export LLD_PREFIX="$lld_prefix"
 export LD64_LLD="$ld64_lld"
-export RUSTC="$rust_prefix/bin/rustc"
+export MPV_REAL_RUSTC="$real_rustc"
+export MPV_RUSTC_DIAGNOSTIC_LOG="$rustc_diagnostic_log"
+export RUSTC="$rustc_wrapper"
 export CC="$llvm_prefix/bin/clang"
 export CXX="$llvm_prefix/bin/clang++"
 export OBJC="$llvm_prefix/bin/clang"
@@ -243,6 +248,8 @@ export RUSTFLAGS="$CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS"
   echo "LLVM_PREFIX=$LLVM_PREFIX"
   echo "LLD_PREFIX=$LLD_PREFIX"
   echo "LD64_LLD=$LD64_LLD"
+  echo "MPV_REAL_RUSTC=$MPV_REAL_RUSTC"
+  echo "MPV_RUSTC_DIAGNOSTIC_LOG=$MPV_RUSTC_DIAGNOSTIC_LOG"
   echo "RUSTC=$RUSTC"
   echo "CC=$CC"
   echo "CXX=$CXX"
@@ -308,7 +315,8 @@ for tool in "$CC" "$CXX" "$AR" "$RANLIB" "$VCPKG_TARGET_RANLIB" "$STRIP" "$LD64_
   "$tool" --version | head -n1
 done
 
-[[ -x "$RUSTC" ]] || die "Homebrew Rust compiler is not executable: $RUSTC"
+[[ -x "$MPV_REAL_RUSTC" ]] || die "Homebrew Rust compiler is not executable: $MPV_REAL_RUSTC"
+[[ -x "$RUSTC" ]] || die "Rust compiler diagnostic wrapper is not executable: $RUSTC"
 "$RUSTC" --version --verbose
 "$RUSTC" --print cfg --target aarch64-apple-darwin
 

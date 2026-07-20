@@ -80,6 +80,8 @@ print_selected_environment() {
     NUGET_FEED_URL
     NUGET_SOURCE_NAME
     NUGET_CONFIG_PATH
+    MPV_REAL_RUSTC
+    MPV_RUSTC_DIAGNOSTIC_LOG
     RUSTC
     CC
     CXX
