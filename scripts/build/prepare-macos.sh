@@ -214,7 +214,7 @@ export CMAKE_PREFIX_PATH="$cmake_prefix_path"
 export CARGO_PROFILE_RELEASE_OPT_LEVEL=3
 export CARGO_PROFILE_RELEASE_LTO=thin
 export CARGO_PROFILE_RELEASE_CODEGEN_UNITS=1
-rust_codegen_flags="-C opt-level=3 -C lto=thin -C codegen-units=1 -C target-cpu=apple-m4 -C relocation-model=pic -C llvm-args=-inline-threshold=800 -C llvm-args=-import-instr-limit=500"
+rust_codegen_flags="-C opt-level=3 -C codegen-units=1 -C target-cpu=apple-m4 -C relocation-model=pic -C llvm-args=-inline-threshold=800 -C llvm-args=-import-instr-limit=500"
 rust_link_flags="-C link-arg=-fuse-ld=$ld64_lld -C link-arg=-Wl,-dead_strip -C link-arg=-lclang_rt.osx -C link-arg=-L$LLVM_RES/lib/darwin -C link-arg=-L$LLVM_UNWIND_RUNTIME_DIR -C link-arg=-L$LLVM_CXX_RUNTIME_DIR -C link-arg=-nostdlib++ -C link-arg=-Wl,-rpath,$LLVM_CXX_RUNTIME_DIR -C link-arg=-Wl,-rpath,$LLVM_UNWIND_RUNTIME_DIR -C link-arg=-Wl,-needed_library,$LLVM_LIBCXX_DYLIB -C link-arg=-Wl,-needed_library,$LLVM_LIBCXXABI_DYLIB -C link-arg=-Wl,-needed_library,$LLVM_LIBUNWIND_DYLIB -C link-arg=-framework -C link-arg=Accelerate -C link-arg=-L${ffmpeg_prefix}/lib -C link-arg=-L${source_prefix}/lib -C link-arg=-L${vcpkg_target_prefix}/lib"
 export CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER="$CC"
 export CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS="$rust_codegen_flags $rust_link_flags"
