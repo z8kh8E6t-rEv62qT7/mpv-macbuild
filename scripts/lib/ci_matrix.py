@@ -312,6 +312,7 @@ SOURCE_REVISION_ITEMS = [
 ]
 
 APPLIED_PATCHES = [
+    "cmake/ports-overlay/libbluray/rename-generic-file-helpers.patch",
     "cmake/ports-overlay/libass/0001-try-to-parse-script-properties.patch",
     "cmake/ports-overlay/libunibreak/fix_export.patch",
     "patch/davs2-0001-skip-lto-sensitive-endian-probe-on-macos-arm64.patch",

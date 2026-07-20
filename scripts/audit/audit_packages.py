@@ -76,6 +76,55 @@ class Audit:
         self.failures += 1
 
 
+def read_archive_symbols(nm: str, archive: Path, selection: str) -> tuple[set[str], str]:
+    result = run(
+        [
+            nm,
+            selection,
+            "--extern-only",
+            "--format=just-symbols",
+            str(archive),
+        ]
+    )
+    if result.returncode != 0:
+        return set(), combined_output(result).strip()
+    return set(result.stdout.splitlines()), ""
+
+
+def audit_libbluray_helper_symbols(audit: Audit, nm: str, archive: Path) -> None:
+    check_name = "libbluray helper symbol isolation"
+    if not archive.is_file():
+        audit.fail(check_name, f"archive is missing: {archive}")
+        return
+
+    defined_symbols, error = read_archive_symbols(nm, archive, "--defined-only")
+    if error:
+        audit.fail(check_name, f"defined-symbol inspection failed: {error}")
+        return
+    undefined_symbols, error = read_archive_symbols(nm, archive, "--undefined-only")
+    if error:
+        audit.fail(check_name, f"undefined-symbol inspection failed: {error}")
+        return
+
+    generic_symbols = {"_dir_open_default", "_file_open_default"}
+    renamed_symbols = {
+        "_libbluray_dir_open_default",
+        "_libbluray_file_open_default",
+    }
+    leaked_symbols = sorted(generic_symbols & (defined_symbols | undefined_symbols))
+    missing_symbols = sorted(renamed_symbols - defined_symbols)
+    if leaked_symbols:
+        audit.fail(check_name, f"generic symbols remain: {', '.join(leaked_symbols)}")
+    elif missing_symbols:
+        audit.fail(check_name, f"renamed symbols are missing: {', '.join(missing_symbols)}")
+    else:
+        audit.row(
+            check_name,
+            "OK",
+            "dir_open_default and file_open_default use libbluray-prefixed symbols",
+        )
+
+
 def pkg_config_exists(package: str) -> bool:
     return run(["pkg-config", "--exists", package]).returncode == 0
 
@@ -113,6 +162,7 @@ def main() -> int:
     vcpkg_target_prefix = env["VCPKG_TARGET_PREFIX"]
     github_summary = Path(env["GITHUB_STEP_SUMMARY"])
     nuget_cleanup_report = audit_dir / "nuget-cleanup.json"
+    libbluray_archive = Path(vcpkg_target_prefix) / "lib" / "libbluray.a"
 
     audit_dir.mkdir(parents=True, exist_ok=True)
     report = audit_dir / "package-audit.md"
@@ -278,6 +328,8 @@ def main() -> int:
             audit.row(f"vcpkg pkg-config: {package}", "OK", f"prefix={value}")
         else:
             audit.fail(f"vcpkg pkg-config: {package}", f"prefix resolved outside vcpkg prefix: {value}")
+
+    audit_libbluray_helper_symbols(audit, env["NM"], libbluray_archive)
 
     if vulkan_headers_config.is_file():
         audit.row("source-built Vulkan headers config", "OK", str(vulkan_headers_config))

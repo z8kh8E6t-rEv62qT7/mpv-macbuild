@@ -1,0 +1,11 @@
+diff --git a/src/file/file.h b/src/file/file.h
+index 2fc5631..790c14f 100644
+--- a/src/file/file.h
++++ b/src/file/file.h
+@@ -31,1 +31,4 @@
++#define dir_open_default  libbluray_dir_open_default
++#define file_open_default libbluray_file_open_default
++
+ #ifdef _WIN32
+ # define DIR_SEP "\\"
+ # define DIR_SEP_CHAR '\\'
