@@ -80,6 +80,7 @@ print_selected_environment() {
     NUGET_FEED_URL
     NUGET_SOURCE_NAME
     NUGET_CONFIG_PATH
+    RUSTC
     CC
     CXX
     OBJC

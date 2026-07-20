@@ -75,6 +75,7 @@ nuget_source_name="${NUGET_SOURCE_NAME:-github}"
 nuget_config_path="${RUNNER_TEMP}/nuget.config"
 llvm_prefix="$(brew --prefix llvm)"
 lld_prefix="$(brew --prefix lld)"
+rust_prefix="$(brew --prefix rust)"
 ld64_lld="${lld_prefix}/bin/ld64.lld"
 macosx_deployment_target="15.0"
 
@@ -146,6 +147,7 @@ export CMAKE_OSX_DEPLOYMENT_TARGET="$macosx_deployment_target"
 export LLVM_PREFIX="$llvm_prefix"
 export LLD_PREFIX="$lld_prefix"
 export LD64_LLD="$ld64_lld"
+export RUSTC="$rust_prefix/bin/rustc"
 export CC="$llvm_prefix/bin/clang"
 export CXX="$llvm_prefix/bin/clang++"
 export OBJC="$llvm_prefix/bin/clang"
@@ -241,6 +243,7 @@ export RUSTFLAGS="$CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS"
   echo "LLVM_PREFIX=$LLVM_PREFIX"
   echo "LLD_PREFIX=$LLD_PREFIX"
   echo "LD64_LLD=$LD64_LLD"
+  echo "RUSTC=$RUSTC"
   echo "CC=$CC"
   echo "CXX=$CXX"
   echo "OBJC=$OBJC"
@@ -304,6 +307,10 @@ for tool in "$CC" "$CXX" "$AR" "$RANLIB" "$VCPKG_TARGET_RANLIB" "$STRIP" "$LD64_
   test -x "$tool"
   "$tool" --version | head -n1
 done
+
+[[ -x "$RUSTC" ]] || die "Homebrew Rust compiler is not executable: $RUSTC"
+"$RUSTC" --version --verbose
+"$RUSTC" --print cfg --target aarch64-apple-darwin
 
 tmpdir="$(mktemp -d)"
 printf 'int main(void){return 0;}\n' > "$tmpdir/probe.c"

@@ -213,6 +213,7 @@ def main() -> int:
     audit.add(f"- link path: `{env['LINK_PATH']}`")
     audit.add(f"- include path: `{env['INCLUDE_PATH']}`")
     audit.add(f"- mpv/FFmpeg C++ disable flags: `{env['MPV_FFMPEG_CXX_DISABLE']}`")
+    audit.add(f"- Rust compiler: `{env.get('RUSTC', '')}`")
     audit.add(f"- Cargo target linker: `{env.get('CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER', '')}`")
     audit.add(f"- Cargo target Rust flags: `{env.get('CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS', '')}`")
     audit.add(f"- Cargo Rust flags: `{env.get('RUSTFLAGS', '')}`")
