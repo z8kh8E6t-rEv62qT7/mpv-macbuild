@@ -43,7 +43,9 @@ configure_ffmpeg() {
   export PKG_CONFIG_LIBDIR="$SOURCE_PREFIX/lib/pkgconfig:$SOURCE_PREFIX/share/pkgconfig:$VCPKG_TARGET_PREFIX/lib/pkgconfig:$VCPKG_TARGET_PREFIX/share/pkgconfig"
   export LIBRARY_PATH="$SOURCE_PREFIX/lib:$VCPKG_TARGET_PREFIX/lib"
   export CPATH="$SOURCE_PREFIX/include:$VCPKG_TARGET_PREFIX/include"
-  lgpl_ldflags="$OPTIMIZATIONS -fuse-ld=$LD64_LLD $LLVM_LINK_BUNDLE $LINK_PATH -L$SOURCE_PREFIX/lib -L$VCPKG_TARGET_PREFIX/lib"
+  lgpl_ldflags="$OPTIMIZATIONS -fuse-ld=$LD64_LLD $LLVM_LINK_BUNDLE $LINK_PATH"
+  lgpl_ldflags+=" -L$SOURCE_PREFIX/lib -L$VCPKG_TARGET_PREFIX/lib"
+  lgpl_ldflags+=" -Wl,--dead-strip-duplicates -Wl,-headerpad_max_install_names"
 
   cd "$src"
   ./configure \
@@ -61,7 +63,7 @@ configure_ffmpeg() {
     --extra-cflags="$CFLAGS" \
     --extra-cxxflags="$CXXFLAGS $MPV_FFMPEG_CXX_DISABLE" \
     --extra-objcflags="$OBJCFLAGS" \
-    --extra-ldflags="$lgpl_ldflags -Wl,--dead-strip-duplicates" \
+    --extra-ldflags="$lgpl_ldflags" \
     --extra-libs="-lc++ -framework AudioToolbox -framework CoreAudio -framework CoreFoundation -framework CoreMedia -framework CoreVideo -framework Security -framework VideoToolbox"
 }
 

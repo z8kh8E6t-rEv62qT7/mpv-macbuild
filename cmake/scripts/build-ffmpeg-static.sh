@@ -60,7 +60,7 @@ PY
 }
 
 configure_ffmpeg() {
-  local ffmpeg_ldflags="$LDFLAGS -Wl,--dead-strip-duplicates"
+  local ffmpeg_ldflags="$LDFLAGS -Wl,--dead-strip-duplicates -Wl,-headerpad_max_install_names"
 
   cd "$SOURCE_ROOT/ffmpeg"
   ./configure \

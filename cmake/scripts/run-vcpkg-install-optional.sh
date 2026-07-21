@@ -12,7 +12,7 @@ printf 'dependency\tstatus\tdetail\n' > "$report"
 
 for dependency in "$@"; do
   log="$AUDIT_DIR/logs/vcpkg-optional-${dependency}.log"
-  if "$install_script" "$dependency" >"$log" 2>&1; then
+  if bash "$install_script" "$dependency" >"$log" 2>&1; then
     printf '%s\tenabled\tinstalled\n' "$dependency" >> "$report"
   else
     status=$?

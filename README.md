@@ -128,8 +128,8 @@ Release behavior:
   The artifact targets Apple M4 or newer Macs and uses
   `MACOSX_DEPLOYMENT_TARGET=15.0`.
 - FFmpeg is built as a stripped release binary while keeping O3, thin LTO,
-  `-fstrict-aliasing`, `ld64.lld`, `-Wl,--dead-strip-duplicates`, and all
-  enabled features.
+  `-fstrict-aliasing`, `ld64.lld`, `-Wl,--dead-strip-duplicates`,
+  `-Wl,-headerpad_max_install_names`, and all enabled features.
 - Homebrew LLVM runtime libraries are intentionally retained: `compiler-rt`
   through the LLVM resource dir and `libc++`, `libc++abi`, and `libunwind`
   through the LLVM runtime library directories. The mpv app bundle carries
