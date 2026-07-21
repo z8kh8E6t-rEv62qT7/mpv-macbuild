@@ -675,8 +675,9 @@ run_parallel_batch "independent source deps" \
   "source-dep-libvidstab" build_libvidstab \
   "source-dep-kvazaar" build_kvazaar \
   "source-dep-xvidcore" build_xvidcore \
-  "source-dep-frei0r" build_frei0r \
-  "source-dep-vapoursynth" build_vapoursynth
+  "source-dep-frei0r" build_frei0r
+
+run_logged "source-dep-vapoursynth" build_vapoursynth
 
 run_logged "rust-staticlib-symbol-normalization" normalize_rust_staticlibs
 
