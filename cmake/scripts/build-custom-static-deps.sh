@@ -6,10 +6,6 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/superbuild-common.sh"
 VULKAN_SDK_TAG="vulkan-sdk-1.4.350.0"
 VULKAN_SDK_VERSION="${VULKAN_SDK_TAG#vulkan-sdk-}"
 VULKAN_SDK_VERSION="${VULKAN_SDK_VERSION%.0}"
-libplacebo_patches=(
-  "$BUILDER_DIR/patch/libplacebo-0001-colorspace-do-not-force-pq-transfer-to-zero-nits-black-always.patch"
-  "$BUILDER_DIR/patch/libplacebo-0002-revert-renderer-never-use-linear-downscaling-on-hdr-sources.patch"
-)
 
 strip_lto_flags() {
   local flag
@@ -263,12 +259,7 @@ build_vulkan_loader() {
 }
 
 build_libplacebo() {
-  local patch
-
   clone_or_update https://github.com/haasn/libplacebo.git "$SOURCE_ROOT/libplacebo"
-  for patch in "${libplacebo_patches[@]}"; do
-    git -C "$SOURCE_ROOT/libplacebo" am --3way --whitespace=fix "$patch"
-  done
   git -C "$SOURCE_ROOT/libplacebo" submodule update --init --recursive
   meson_static_install "$SOURCE_ROOT/libplacebo" "$BUILD_ROOT/libplacebo" \
     -Ddemos=false \

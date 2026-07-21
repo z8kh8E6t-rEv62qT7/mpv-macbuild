@@ -316,8 +316,6 @@ APPLIED_PATCHES = [
     "cmake/ports-overlay/libass/0001-try-to-parse-script-properties.patch",
     "cmake/ports-overlay/libunibreak/fix_export.patch",
     "patch/davs2-0001-skip-lto-sensitive-endian-probe-on-macos-arm64.patch",
-    "patch/libplacebo-0001-colorspace-do-not-force-pq-transfer-to-zero-nits-black-always.patch",
-    "patch/libplacebo-0002-revert-renderer-never-use-linear-downscaling-on-hdr-sources.patch",
     "patch/libcdio-paranoia-0001-build-libraries-only.patch",
     "patch/libbs2b-0001-build-library-without-sndfile-tools.patch",
     "patch/ffmpeg-0001-avformat-some-subtitle-optimizations.patch",
