@@ -166,10 +166,11 @@ Custom source-built and overlay-managed components include:
 
 - `libdovi` from `quietvoid/dovi_tool` HEAD, installed as the C API package
   `dovi`.
-- `libdovi` and `rav1e` are both Rust `staticlib` C API packages. After both
-  are installed, CI weakens only their overlapping Rust runtime symbols so
-  FFmpeg can link `--enable-libplacebo`/libdovi and `--enable-librav1e`
-  together without hiding either public C API.
+- `libdovi`, `rav1e`, and the overlay-managed `librsvg` are Rust `staticlib`
+  C API packages. After all three are installed, CI weakens only their
+  overlapping Rust runtime symbols so FFmpeg can link libplacebo/libdovi,
+  `--enable-librav1e`, and `--enable-librsvg` together without hiding any
+  public C API.
 - `Vulkan-Headers` from `vulkan-sdk-1.4.350.0`, installed into the source
   prefix with the matching CMake package config and Vulkan registry files.
 - `Vulkan-Loader` from `vulkan-sdk-1.4.350.0`, built as the bundled Vulkan

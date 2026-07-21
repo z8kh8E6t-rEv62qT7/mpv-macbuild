@@ -338,8 +338,8 @@ MAPPED_DECISIONS = [
     (
         "Rust staticlib overlap",
         "STATIC LINKAGE HYGIENE",
-        "`libdovi.a` and `librav1e.a` keep their public C APIs while overlapping Rust runtime "
-        "symbols are weakened before FFmpeg links both archives.",
+        "`libdovi.a`, `librav1e.a`, and `librsvg-2.a` keep their public C APIs while overlapping "
+        "Rust runtime symbols are weakened before FFmpeg links the archives.",
     ),
     ("OpenCL", "SYSTEM DYNAMIC", "FFmpeg uses Apple's OpenCL framework; it is not treated as a third-party Homebrew dependency."),
     (

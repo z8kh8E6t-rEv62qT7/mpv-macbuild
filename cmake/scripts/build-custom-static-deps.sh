@@ -134,31 +134,58 @@ weaken_symbols_in_archive() {
   "$RANLIB" "$archive"
 }
 
-# cargo-c staticlibs embed Rust runtime objects. Keep each package's C API
-# exported, but make shared Rust internals weak so FFmpeg can link both.
+# Rust staticlibs embed Rust runtime objects. Keep each package's C API
+# exported, but make shared Rust internals weak before FFmpeg links them.
 normalize_rust_staticlibs() {
-  local dovi_archive="$SOURCE_PREFIX/lib/libdovi.a"
-  local rav1e_archive="$SOURCE_PREFIX/lib/librav1e.a"
   local work_dir="$BUILD_ROOT/rust-staticlib-symbols"
-  local dovi_symbols="$work_dir/libdovi.global-symbols.txt"
-  local rav1e_symbols="$work_dir/librav1e.global-symbols.txt"
-  local overlap_symbols="$work_dir/libdovi-librav1e.overlap-symbols.txt"
+  local overlap_symbols="$work_dir/overlap-symbols.txt"
   local report="$AUDIT_DIR/rust-staticlib-symbols.txt"
   local objcopy
   local overlap_count
+  local index
+  local archive_name
+  local archive_path
+  local symbols_file
+  local weaken_file
+  local weaken_count
+  local -a archive_names=(libdovi librav1e librsvg-2)
+  local -a archive_paths=(
+    "$SOURCE_PREFIX/lib/libdovi.a"
+    "$SOURCE_PREFIX/lib/librav1e.a"
+    "$VCPKG_TARGET_PREFIX/lib/librsvg-2.a"
+  )
+  local -a symbol_files=()
+  local -a weaken_files=()
+  local -a weaken_counts=()
 
   mkdir -p "$work_dir" "$AUDIT_DIR"
   objcopy="$(find_llvm_objcopy)"
 
-  write_defined_global_symbols "$dovi_archive" "$dovi_symbols"
-  write_defined_global_symbols "$rav1e_archive" "$rav1e_symbols"
-  comm -12 "$dovi_symbols" "$rav1e_symbols" > "$overlap_symbols"
+  for index in "${!archive_names[@]}"; do
+    archive_name="${archive_names[$index]}"
+    archive_path="${archive_paths[$index]}"
+    symbols_file="$work_dir/$archive_name.global-symbols.txt"
+    weaken_file="$work_dir/$archive_name.weaken-symbols.txt"
+    write_defined_global_symbols "$archive_path" "$symbols_file"
+    symbol_files+=("$symbols_file")
+    weaken_files+=("$weaken_file")
+  done
+
+  sort "${symbol_files[@]}" | uniq -d > "$overlap_symbols"
   overlap_count="$(wc -l < "$overlap_symbols" | tr -d '[:space:]')"
+
+  for index in "${!archive_names[@]}"; do
+    comm -12 "${symbol_files[$index]}" "$overlap_symbols" > "${weaken_files[$index]}"
+    weaken_count="$(wc -l < "${weaken_files[$index]}" | tr -d '[:space:]')"
+    weaken_counts+=("$weaken_count")
+  done
 
   {
     printf 'Rust staticlib overlap normalization\n'
-    printf 'libdovi archive: %s\n' "$dovi_archive"
-    printf 'rav1e archive: %s\n' "$rav1e_archive"
+    for index in "${!archive_names[@]}"; do
+      printf '%s archive: %s\n' "${archive_names[$index]}" "${archive_paths[$index]}"
+      printf '%s weakened symbol count: %s\n' "${archive_names[$index]}" "${weaken_counts[$index]}"
+    done
     printf 'llvm-objcopy: %s\n' "$objcopy"
     printf 'overlap symbol count: %s\n' "$overlap_count"
     printf '\n'
@@ -170,13 +197,17 @@ normalize_rust_staticlibs() {
     return 0
   fi
 
-  if grep -E '^_(dovi|rav1e)_' "$overlap_symbols" >/dev/null; then
-    die "public C API symbols unexpectedly overlap between libdovi and rav1e"
+  if grep -E '^_(dovi|rav1e|rsvg)_' "$overlap_symbols" >/dev/null; then
+    die "public C API symbols unexpectedly overlap between Rust static libraries"
   fi
 
-  weaken_symbols_in_archive "$dovi_archive" "$overlap_symbols" "$objcopy"
-  weaken_symbols_in_archive "$rav1e_archive" "$overlap_symbols" "$objcopy"
-  echo "Weakened $overlap_count overlapping Rust staticlib symbols in libdovi.a and librav1e.a"
+  for index in "${!archive_names[@]}"; do
+    if [[ "${weaken_counts[$index]}" -gt 0 ]]; then
+      weaken_symbols_in_archive "${archive_paths[$index]}" "${weaken_files[$index]}" "$objcopy"
+    fi
+  done
+
+  echo "Weakened $overlap_count overlapping Rust staticlib symbols across libdovi.a, librav1e.a, and librsvg-2.a"
   echo "Report: $report"
 }
 
