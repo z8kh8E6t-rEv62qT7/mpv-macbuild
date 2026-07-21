@@ -3,6 +3,7 @@ set -euo pipefail
 
 real_rustc="${MPV_REAL_RUSTC:-}"
 diagnostic_log="${MPV_RUSTC_DIAGNOSTIC_LOG:-}"
+rustc_deployment_target="${MPV_RUSTC_DEPLOYMENT_TARGET:-}"
 rustc_args=("$@")
 
 if [[ -z "$real_rustc" ]]; then
@@ -16,6 +17,16 @@ fi
 if [[ "$real_rustc" -ef "$0" ]]; then
   echo "error: MPV_REAL_RUSTC resolves to the diagnostic wrapper" >&2
   exit 126
+fi
+if [[ -z "$rustc_deployment_target" ]]; then
+  echo "error: MPV_RUSTC_DEPLOYMENT_TARGET is not set" >&2
+  exit 126
+fi
+
+# Meson can pass an explicit empty deployment target to Cargo. rustc rejects
+# that value, so restore the build's independently preserved target.
+if [[ -z "${MACOSX_DEPLOYMENT_TARGET:-}" ]]; then
+  export MACOSX_DEPLOYMENT_TARGET="$rustc_deployment_target"
 fi
 
 is_cfg_probe=0
@@ -96,6 +107,7 @@ write_diagnostic() {
       SDKROOT
       DEVELOPER_DIR
       MACOSX_DEPLOYMENT_TARGET
+      MPV_RUSTC_DEPLOYMENT_TARGET
       DYLD_LIBRARY_PATH
       DYLD_FALLBACK_LIBRARY_PATH
       DYLD_FRAMEWORK_PATH

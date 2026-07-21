@@ -82,6 +82,7 @@ print_selected_environment() {
     NUGET_CONFIG_PATH
     MPV_REAL_RUSTC
     MPV_RUSTC_DIAGNOSTIC_LOG
+    MPV_RUSTC_DEPLOYMENT_TARGET
     RUSTC
     CC
     CXX

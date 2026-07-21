@@ -216,6 +216,7 @@ def main() -> int:
     audit.add(f"- Rust compiler proxy: `{env.get('RUSTC', '')}`")
     audit.add(f"- Rust compiler executable: `{env.get('MPV_REAL_RUSTC', '')}`")
     audit.add(f"- Rust probe diagnostic log: `{env.get('MPV_RUSTC_DIAGNOSTIC_LOG', '')}`")
+    audit.add(f"- Rust macOS deployment target: `{env.get('MPV_RUSTC_DEPLOYMENT_TARGET', '')}`")
     audit.add(f"- Cargo target linker: `{env.get('CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER', '')}`")
     audit.add(f"- Cargo target Rust flags: `{env.get('CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS', '')}`")
     audit.add(f"- Cargo Rust flags: `{env.get('RUSTFLAGS', '')}`")
