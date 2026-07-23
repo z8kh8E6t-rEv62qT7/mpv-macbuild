@@ -58,6 +58,6 @@ for library in avcodec avdevice avfilter avformat avutil swresample swscale; do
       || die "$(basename "$ffmpeg_tool") does not dynamically link lib${library}"
   done
 done
-runtime_audit_check_otool_refs \
+runtime_audit_check_common_otool_refs \
   "FFmpeg install prefix" \
   "$AUDIT_DIR/ffmpeg-prefix-otool.txt"

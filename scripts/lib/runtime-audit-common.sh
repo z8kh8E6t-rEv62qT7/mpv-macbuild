@@ -175,7 +175,7 @@ runtime_audit_check_static_required_dylibs() {
   done < <(runtime_audit_denied_dylib_patterns)
 }
 
-runtime_audit_check_otool_refs() {
+runtime_audit_check_common_otool_refs() {
   local label="$1"
   shift
   local otool_files=("$@")
@@ -184,6 +184,14 @@ runtime_audit_check_otool_refs() {
   runtime_audit_check_system_cxx_refs "$label" "${otool_files[@]}"
   runtime_audit_check_vapoursynth_rpath_refs "$label" "${otool_files[@]}"
   runtime_audit_check_homebrew_refs "$label" "${otool_files[@]}"
+}
+
+runtime_audit_check_static_bundle_otool_refs() {
+  local label="$1"
+  shift
+  local otool_files=("$@")
+
+  runtime_audit_check_common_otool_refs "$label" "${otool_files[@]}"
   runtime_audit_check_static_required_dylibs "$label" "${otool_files[@]}"
 }
 

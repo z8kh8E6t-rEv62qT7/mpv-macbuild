@@ -69,7 +69,7 @@ runtime_audit_check_dynamic_files \
   "mpv.app bundle" \
   "$AUDIT_DIR/bundle-dynamic-files.txt" \
   "$source_built_exception_dir"
-runtime_audit_check_otool_refs \
+runtime_audit_check_static_bundle_otool_refs \
   "mpv.app bundle" \
   "$AUDIT_DIR/bundle-otool.txt" \
   "$AUDIT_DIR/bundle-dynamic-otool.txt"
