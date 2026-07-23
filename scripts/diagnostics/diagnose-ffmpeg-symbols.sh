@@ -4,17 +4,21 @@ set -euo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/common.sh"
 
 ffmpeg_bin="${1:-}"
+report_stem="${2:-ffmpeg-symbol-diagnostics}"
 if [[ -z "$ffmpeg_bin" ]]; then
   [[ -n "${FFMPEG_PREFIX:-}" ]] || die "FFMPEG_PREFIX is not set and no FFmpeg binary argument was provided"
   ffmpeg_bin="$FFMPEG_PREFIX/bin/ffmpeg"
 fi
 
 [[ -x "$ffmpeg_bin" ]] || die "missing executable FFmpeg tool: $ffmpeg_bin"
+case "$report_stem" in
+  "" | *[!A-Za-z0-9._-]*) die "invalid FFmpeg diagnostics report stem: $report_stem" ;;
+esac
 
 mkdir -p "$AUDIT_DIR" "$AUDIT_DIR/logs"
 
-report="$AUDIT_DIR/ffmpeg-symbol-diagnostics.txt"
-lldb_commands="$AUDIT_DIR/logs/ffmpeg-symbol-diagnostics.lldb"
+report="$AUDIT_DIR/${report_stem}.txt"
+lldb_commands="$AUDIT_DIR/logs/${report_stem}.lldb"
 nm_tool="${NM:-nm}"
 
 have_tool() {

@@ -222,11 +222,13 @@ Artifacts:
   `ffmpeg-lgpl/`, with only the `ffmpeg` command-line executable, the same
   shared-library layout, and mandatory JXL/SVG decoding through libjxl and
   librsvg 2.62.3. The workflow uploads both FFmpeg Actions artifacts immediately
-  after `Build FFmpeg`, then smoke-tests the GPLv3+nonfree build in a clean
-  dyld environment and audits runtime dependencies. The smoke test includes
-  x264 default-encoding regression cases so AArch64 assembly/runtime issues are
-  caught before mpv starts. Later smoke, audit, or mpv failures do not remove
-  the FFmpeg tarball from the run.
+  after `Build FFmpeg`, then extracts and smoke-tests both delivered tarballs in
+  a clean dyld environment before auditing runtime dependencies. Both profiles
+  exercise common built-in codecs plus real JXL encode/decode and SVG decode;
+  the GPLv3+nonfree profile additionally runs the x264 default-encoding
+  regression matrix so AArch64 assembly/runtime issues are caught before mpv
+  starts. Later smoke, audit, or mpv failures do not remove the FFmpeg tarballs
+  from the run.
 - `package-audit-<mpv-ref>-<ffmpeg-ref>`: package and feature audit.
 - `full-audit-<mpv-ref>-<ffmpeg-ref>`: package audit plus FFmpeg and bundle
   `otool` data.

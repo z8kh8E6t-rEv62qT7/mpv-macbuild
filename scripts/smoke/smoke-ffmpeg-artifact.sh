@@ -2,26 +2,79 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/common.sh"
+source "$CI_SCRIPT_ROOT/lib/ffmpeg-package-common.sh"
 
-require_source_env
+usage() {
+  echo "usage: $0 <gpl|lgpl> <archive-path> <expected-root>" >&2
+  exit 2
+}
 
-ffmpeg_bin="$FFMPEG_PREFIX/bin/ffmpeg"
-[[ -x "$ffmpeg_bin" ]] || die "missing executable FFmpeg tool: $ffmpeg_bin"
+[[ "$#" -eq 3 ]] || usage
 
-mkdir -p "$AUDIT_DIR/logs" "$AUDIT_DIR/crash-reports"
+profile="$1"
+archive_path="$2"
+expected_root="$3"
+expected_tools=()
 
-summary="$AUDIT_DIR/ffmpeg-smoke-summary.md"
-runtime_report="$AUDIT_DIR/ffmpeg-smoke-runtime.txt"
-smoke_dir="$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/ffmpeg-smoke.XXXXXX")"
+case "$profile:$expected_root" in
+  gpl:ffmpeg-gplv3-nonfree)
+    expected_tools=(ffmpeg ffprobe ffplay)
+    ;;
+  lgpl:ffmpeg-lgpl)
+    expected_tools=(ffmpeg)
+    ;;
+  *)
+    die "unsupported FFmpeg smoke profile/root combination: $profile:$expected_root"
+    ;;
+esac
+
+[[ -f "$archive_path" ]] || die "missing FFmpeg artifact archive: $archive_path"
+
+extract_dir="$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/ffmpeg-${profile}-artifact-smoke.XXXXXX")"
+smoke_dir="$extract_dir/smoke"
+artifact_root="$extract_dir/$expected_root"
+archive_listing="$smoke_dir/archive-entries.txt"
+ffmpeg_bin="$artifact_root/bin/ffmpeg"
+report_stem="ffmpeg-${profile}-smoke"
+summary="$AUDIT_DIR/${report_stem}-summary.md"
+runtime_report="$AUDIT_DIR/${report_stem}-runtime.txt"
+crash_report_dir="$AUDIT_DIR/crash-reports/$profile"
 crash_marker="$smoke_dir/crash-marker"
 failures=0
 
+mkdir -p "$AUDIT_DIR/logs" "$crash_report_dir" "$smoke_dir"
+
+validate_archive_layout() {
+  local entry
+
+  if ! tar -tJf "$archive_path" > "$archive_listing"; then
+    die "unable to list FFmpeg artifact archive: $archive_path"
+  fi
+  [[ -s "$archive_listing" ]] || die "FFmpeg artifact archive is empty: $archive_path"
+
+  while IFS= read -r entry; do
+    entry="${entry#./}"
+    case "$entry" in
+      "$expected_root" | "$expected_root/" | "$expected_root/"*) ;;
+      *) die "archive entry is outside expected root $expected_root: $entry" ;;
+    esac
+    case "/$entry/" in
+      */../*) die "archive entry contains parent traversal: $entry" ;;
+    esac
+  done < "$archive_listing"
+
+  tar -xJf "$archive_path" -C "$extract_dir"
+  [[ -d "$artifact_root" ]] || die "archive did not extract expected root: $expected_root"
+  validate_ffmpeg_shared_stage "$artifact_root" "${expected_tools[@]}"
+}
+
 cleanup() {
-  rm -rf "$smoke_dir"
+  rm -rf "$extract_dir"
 }
 trap cleanup EXIT
 
 touch "$crash_marker"
+validate_archive_layout
 
 format_command() {
   local part
@@ -46,17 +99,22 @@ write_runtime_report() {
     echo "# FFmpeg Smoke Runtime"
     echo
     echo "generated_utc: $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+    echo "profile: $profile"
+    echo "archive: $archive_path"
+    echo "archive_root: $expected_root"
     echo "ffmpeg: $ffmpeg_bin"
-    echo "prefix: $FFMPEG_PREFIX"
+    echo "prefix: $artifact_root"
     echo
     echo "## file"
-    file "$ffmpeg_bin" "$FFMPEG_PREFIX/bin/ffprobe" "$FFMPEG_PREFIX/bin/ffplay" 2>&1 || true
+    for tool in "${expected_tools[@]}"; do
+      file "$artifact_root/bin/$tool" 2>&1 || true
+    done
     echo
     echo "## otool -L ffmpeg"
     otool -L "$ffmpeg_bin" 2>&1 || true
     echo
     echo "## Vulkan runtime files"
-    find "$FFMPEG_PREFIX/lib" -maxdepth 1 \( -name 'libvulkan*.dylib' -o -name 'libMoltenVK*.dylib' \) -exec ls -l {} + 2>&1 || true
+    find "$artifact_root/lib" -maxdepth 1 \( -name 'libvulkan*.dylib' -o -name 'libMoltenVK*.dylib' \) -exec ls -l {} + 2>&1 || true
     echo
     echo "## FFmpeg load command identity"
     otool -l "$ffmpeg_bin" 2>&1 | awk '
@@ -79,6 +137,9 @@ init_summary() {
   {
     echo "# FFmpeg Smoke Summary"
     echo
+    echo "- profile: \`$profile\`"
+    echo "- archive: \`$archive_path\`"
+    echo "- archive root: \`$expected_root\`"
     echo "- ffmpeg: \`$ffmpeg_bin\`"
     echo "- smoke dir: \`$smoke_dir\`"
     echo "- clean dyld: \`DYLD_FRAMEWORK_PATH\`, \`DYLD_FALLBACK_FRAMEWORK_PATH\`, \`DYLD_FALLBACK_LIBRARY_PATH\`, and \`DYLD_LIBRARY_PATH\` unset"
@@ -107,7 +168,7 @@ run_case() {
 
   command_text="$(format_command "$@")"
 
-  if run_logged "ffmpeg-smoke-$slug" run_ffmpeg_clean "$@"; then
+  if run_logged "ffmpeg-$profile-smoke-$slug" run_ffmpeg_clean "$@"; then
     status=0
   else
     status=$?
@@ -125,7 +186,7 @@ run_case() {
     output_ok=1
   fi
 
-  printf '| `%s` | `%s` | `%s` | `%s` |\n' \
+  printf "| \`%s\` | \`%s\` | \`%s\` | \`%s\` |\n" \
     "$slug" "$status" "$output_state" "$command_text" >> "$summary"
 
   if [[ "$status" -ne 0 || "$output_ok" -ne 1 ]]; then
@@ -294,7 +355,7 @@ collect_crash_reports() {
   fi
 
   while IFS= read -r report; do
-    dest="$AUDIT_DIR/crash-reports/$(basename "$report")"
+    dest="$crash_report_dir/$(basename "$report")"
     cp "$report" "$dest"
     symbolize_crash_report "$dest" "${dest}.symbolized.txt" || true
     copied=$((copied + 1))
@@ -303,12 +364,13 @@ collect_crash_reports() {
   if [[ "$copied" -eq 0 ]]; then
     append_summary_note "Crash reports: none found for this smoke run."
   else
-    append_summary_note "Crash reports: copied ${copied} report(s) into \`crash-reports/\`."
+    append_summary_note "Crash reports: copied ${copied} report(s) into \`crash-reports/$profile/\`."
   fi
 }
 
 collect_symbol_diagnostics() {
   local diagnostics_script
+  local diagnostics_stem="ffmpeg-${profile}-symbol-diagnostics"
 
   diagnostics_script="$CI_SCRIPT_ROOT/diagnostics/diagnose-ffmpeg-symbols.sh"
 
@@ -317,10 +379,10 @@ collect_symbol_diagnostics() {
     return
   fi
 
-  if run_logged "ffmpeg-symbol-diagnostics" "$diagnostics_script" "$ffmpeg_bin"; then
-    append_summary_note "Symbol diagnostics: wrote \`ffmpeg-symbol-diagnostics.txt\`."
+  if run_logged "$diagnostics_stem" "$diagnostics_script" "$ffmpeg_bin" "$diagnostics_stem"; then
+    append_summary_note "Symbol diagnostics: wrote \`${diagnostics_stem}.txt\`."
   else
-    append_summary_note "Symbol diagnostics: failed; see \`logs/ffmpeg-symbol-diagnostics.log\`."
+    append_summary_note "Symbol diagnostics: failed; see \`logs/${diagnostics_stem}.log\`."
   fi
 }
 
@@ -331,9 +393,16 @@ audio_flac="$smoke_dir/audio.flac"
 audio_wav="$smoke_dir/audio.wav"
 video_mkv="$smoke_dir/video.mkv"
 video_ffv1_mkv="$smoke_dir/video-ffv1.mkv"
+image_jxl="$smoke_dir/image.jxl"
+image_svg="$smoke_dir/image.svg"
 testsrc_hd="testsrc=duration=2:size=1280x720"
 testsrc_x264_boundary="testsrc=duration=2:size=128x128:rate=25"
 testsrc_x264_yuv420p="testsrc=duration=2:size=128x128:rate=25,format=yuv420p"
+
+printf '%s\n' \
+  '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">' \
+  '  <rect width="64" height="64" fill="red"/>' \
+  '</svg>' > "$image_svg"
 
 run_case "hwaccels" "" -hide_banner -hwaccels
 run_case "lavfi-sine-null" "" -v error -y -f lavfi -i sine=frequency=1000:duration=2 -f null -
@@ -342,35 +411,40 @@ run_case "lavfi-sine-pcm-wav" "$audio_wav" -v error -y -f lavfi -i sine=frequenc
 run_case "lavfi-testsrc-null" "" -v error -y -f lavfi -i "$testsrc_hd" -f null -
 run_case "lavfi-testsrc-ffv1-mkv" "$video_ffv1_mkv" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v ffv1 "$video_ffv1_mkv"
 run_case "lavfi-testsrc-mkv" "$video_mkv" -v error -y -f lavfi -i "$testsrc_hd" "$video_mkv"
+run_case "jxl-encode" "$image_jxl" -v error -y -f lavfi -i testsrc=duration=1:size=64x64:rate=1 -frames:v 1 -c:v libjxl "$image_jxl"
+run_case "jxl-decode-null" "" -v error -c:v libjxl -i "$image_jxl" -frames:v 1 -f null -
+run_case "svg-librsvg-decode-null" "" -v error -c:v librsvg -i "$image_svg" -frames:v 1 -f null -
 
 # x264 regression cases keep the default libx264 path under the same clean dyld
-# smoke gate as the rest of the FFmpeg artifact.
-run_case "x264-default-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -f null -
-run_case "x264-yuv420p-null" "" -v error -y -f lavfi -i "$testsrc_x264_yuv420p" -c:v libx264 -f null -
-run_case "x264-frames1-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -frames:v 1 -f null -
-run_case "x264-tune-zerolatency-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -tune zerolatency -f null -
-run_case "x264-rc-lookahead0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params rc-lookahead=0 -f null -
-run_case "x264-rc-lookahead1-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params rc-lookahead=1 -f null -
-run_case "x264-sync-lookahead0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params sync-lookahead=0 -f null -
-run_case "x264-mbtree0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params mbtree=0 -f null -
-run_case "x264-asm0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params asm=0 -f null -
-run_case "x264-bframes0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params bframes=0 -f null -
-run_case "x264-threads1-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params threads=1 -f null -
-run_case "x264-sliced-threads1-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params sliced-threads=1 -f null -
-run_case "x264-scenecut0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params scenecut=0 -f null -
-run_case "x264-ref1-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params ref=1 -f null -
-run_case "x264-subme0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params subme=0 -f null -
-run_case "x264-aq-mode0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params aq-mode=0 -f null -
-run_case "x264-cabac0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params cabac=0 -f null -
-run_case "x264-trellis0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params trellis=0 -f null -
-run_case "x264-8x8dct0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params 8x8dct=0 -f null -
+# smoke gate as the rest of the GPL FFmpeg artifact.
+if [[ "$profile" == "gpl" ]]; then
+  run_case "x264-default-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -f null -
+  run_case "x264-yuv420p-null" "" -v error -y -f lavfi -i "$testsrc_x264_yuv420p" -c:v libx264 -f null -
+  run_case "x264-frames1-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -frames:v 1 -f null -
+  run_case "x264-tune-zerolatency-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -tune zerolatency -f null -
+  run_case "x264-rc-lookahead0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params rc-lookahead=0 -f null -
+  run_case "x264-rc-lookahead1-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params rc-lookahead=1 -f null -
+  run_case "x264-sync-lookahead0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params sync-lookahead=0 -f null -
+  run_case "x264-mbtree0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params mbtree=0 -f null -
+  run_case "x264-asm0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params asm=0 -f null -
+  run_case "x264-bframes0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params bframes=0 -f null -
+  run_case "x264-threads1-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params threads=1 -f null -
+  run_case "x264-sliced-threads1-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params sliced-threads=1 -f null -
+  run_case "x264-scenecut0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params scenecut=0 -f null -
+  run_case "x264-ref1-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params ref=1 -f null -
+  run_case "x264-subme0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params subme=0 -f null -
+  run_case "x264-aq-mode0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params aq-mode=0 -f null -
+  run_case "x264-cabac0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params cabac=0 -f null -
+  run_case "x264-trellis0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params trellis=0 -f null -
+  run_case "x264-8x8dct0-null" "" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v libx264 -x264-params 8x8dct=0 -f null -
+fi
 
 collect_crash_reports
 
 if [[ "$failures" -ne 0 ]]; then
   collect_symbol_diagnostics
   append_summary_note "Result: FAIL (${failures} failing smoke case(s))."
-  die "FFmpeg smoke failed; see $summary and $AUDIT_DIR/crash-reports"
+  die "FFmpeg $profile smoke failed; see $summary and $crash_report_dir"
 fi
 
 append_summary_note "Result: PASS."

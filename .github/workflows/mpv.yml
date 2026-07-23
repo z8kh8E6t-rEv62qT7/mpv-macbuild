@@ -180,9 +180,23 @@ jobs:
           path: ${{ steps.ffmpeg_artifact.outputs.ffmpeg_lgpl_path }}
           if-no-files-found: error
 
-      - name: Smoke test FFmpeg install-prefix artifact
-        id: ffmpeg-smoke
-        run: bash builder/scripts/smoke/smoke-ffmpeg-artifact.sh
+      - name: Smoke test GPLv3+nonfree FFmpeg artifact
+        id: ffmpeg-gpl-smoke
+        if: ${{ steps.ffmpeg_artifact.outcome == 'success' }}
+        run: >-
+          bash builder/scripts/smoke/smoke-ffmpeg-artifact.sh
+          gpl
+          "${{ steps.ffmpeg_artifact.outputs.ffmpeg_gpl_path }}"
+          ffmpeg-gplv3-nonfree
+
+      - name: Smoke test LGPL FFmpeg artifact
+        id: ffmpeg-lgpl-smoke
+        if: ${{ always() && !cancelled() && steps.ffmpeg_artifact.outcome == 'success' }}
+        run: >-
+          bash builder/scripts/smoke/smoke-ffmpeg-artifact.sh
+          lgpl
+          "${{ steps.ffmpeg_artifact.outputs.ffmpeg_lgpl_path }}"
+          ffmpeg-lgpl
 
       - name: Audit FFmpeg runtime dependencies
         id: ffmpeg-runtime-audit
