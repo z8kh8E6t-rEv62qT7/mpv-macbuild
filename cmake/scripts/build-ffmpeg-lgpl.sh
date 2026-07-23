@@ -2,6 +2,7 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/superbuild-common.sh"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ffmpeg-common.sh"
 
 src="$SOURCE_ROOT/ffmpeg-lgpl"
 
@@ -76,6 +77,7 @@ validate_profile() {
 }
 
 run_logged "ffmpeg-lgpl-checkout" checkout_ffmpeg
+run_logged "ffmpeg-lgpl-fix-configure-probes" fix_ffmpeg_configure_probes "$src/configure"
 run_logged "ffmpeg-lgpl-configure" configure_ffmpeg
 run_logged "ffmpeg-lgpl-build" make -C "$src" -j"$(ci_jobs)"
 run_logged "ffmpeg-lgpl-install" make -C "$src" install
