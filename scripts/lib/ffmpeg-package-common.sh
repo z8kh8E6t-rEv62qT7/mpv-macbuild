@@ -47,14 +47,22 @@ PY
 
 validate_ffmpeg_shared_stage() {
   local root="$1"
+  shift
+  local expected_tools=("$@")
   local library
   local tool
   local refs
+  local staged_path
+  local staged_tool
+  local expected_tool
+  local is_expected
+
+  [[ "${#expected_tools[@]}" -gt 0 ]] || die "no expected FFmpeg tools specified"
 
   if find "$root" -type f -name '*.a' -print -quit | grep -q .; then
     die "public FFmpeg package contains a static archive"
   fi
-  for tool in ffmpeg ffprobe ffplay; do
+  for tool in "${expected_tools[@]}"; do
     [[ -x "$root/bin/$tool" ]] || die "missing FFmpeg tool: $tool"
     refs="$(otool -L "$root/bin/$tool")"
     for library in "${standard_ffmpeg_libraries[@]}"; do
@@ -65,4 +73,16 @@ validate_ffmpeg_shared_stage() {
       -u DYLD_FALLBACK_LIBRARY_PATH -u DYLD_FALLBACK_FRAMEWORK_PATH \
       "$root/bin/$tool" -version >/dev/null
   done
+
+  while IFS= read -r staged_path; do
+    staged_tool="$(basename "$staged_path")"
+    is_expected=0
+    for expected_tool in "${expected_tools[@]}"; do
+      if [[ "$staged_tool" == "$expected_tool" ]]; then
+        is_expected=1
+        break
+      fi
+    done
+    [[ "$is_expected" -eq 1 ]] || die "unexpected FFmpeg tool: $staged_tool"
+  done < <(find "$root/bin" -mindepth 1 -maxdepth 1 -print | sort)
 }

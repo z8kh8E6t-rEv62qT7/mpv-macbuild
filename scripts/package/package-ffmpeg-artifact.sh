@@ -16,9 +16,9 @@ gpl_name="ffmpeg-gplv3-nonfree-macos15-arm64"
 lgpl_name="ffmpeg-lgpl-macos15-arm64"
 
 stage_ffmpeg_shared_prefix "$FFMPEG_PREFIX" "$stage_dir/ffmpeg-gplv3-nonfree"
-validate_ffmpeg_shared_stage "$stage_dir/ffmpeg-gplv3-nonfree"
+validate_ffmpeg_shared_stage "$stage_dir/ffmpeg-gplv3-nonfree" ffmpeg ffprobe ffplay
 stage_ffmpeg_shared_prefix "$FFMPEG_LGPL_PREFIX" "$stage_dir/ffmpeg-lgpl"
-validate_ffmpeg_shared_stage "$stage_dir/ffmpeg-lgpl"
+validate_ffmpeg_shared_stage "$stage_dir/ffmpeg-lgpl" ffmpeg
 mkdir -p \
   "$stage_dir/ffmpeg-gplv3-nonfree/share/licenses/ffmpeg" \
   "$stage_dir/ffmpeg-lgpl/share/licenses/ffmpeg"

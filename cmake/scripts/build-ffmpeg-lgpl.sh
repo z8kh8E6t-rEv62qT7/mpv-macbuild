@@ -55,6 +55,7 @@ configure_ffmpeg() {
     --ar="$AR" --ranlib="$RANLIB" --strip="$STRIP" \
     --pkg-config=pkg-config --pkg-config-flags=--static \
     --enable-shared --disable-static --install-name-dir=@rpath \
+    --disable-ffplay --disable-ffprobe \
     --disable-autodetect --disable-debug --enable-stripping --enable-pic \
     --enable-pthreads --enable-asm --enable-hardcoded-tables \
     --enable-bzlib --enable-iconv --enable-lzma --enable-zlib \
@@ -70,9 +71,16 @@ configure_ffmpeg() {
 
 validate_profile() {
   local config="$src/config.h"
+  local disabled_tool
+
   grep -Fx '#define CONFIG_GPL 0' "$config" >/dev/null
   grep -Fx '#define CONFIG_VERSION3 0' "$config" >/dev/null
   grep -Fx '#define CONFIG_NONFREE 0' "$config" >/dev/null
+  [[ -x "$FFMPEG_LGPL_PREFIX/bin/ffmpeg" ]] || die "LGPL FFmpeg executable is missing"
+  for disabled_tool in ffprobe ffplay; do
+    [[ ! -e "$FFMPEG_LGPL_PREFIX/bin/$disabled_tool" ]] \
+      || die "unexpected LGPL FFmpeg executable: $disabled_tool"
+  done
   "$FFMPEG_LGPL_PREFIX/bin/ffmpeg" -hide_banner -buildconf
 }
 

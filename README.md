@@ -219,10 +219,10 @@ Artifacts:
   seven shared FFmpeg libraries, headers, relocatable pkg-config files, and
   their runtime closure; static archives remain internal for the mpv build.
 - `ffmpeg-lgpl-macos15-arm64.tar.xz`: strict LGPL FFmpeg package rooted at
-  `ffmpeg-lgpl/`, with the same shared-library layout and mandatory JXL/SVG
-  decoding through libjxl and librsvg 2.62.3. The workflow uploads both FFmpeg
-  Actions artifacts immediately after `Build FFmpeg`, then smoke-tests the
-  GPLv3+nonfree build in a clean
+  `ffmpeg-lgpl/`, with only the `ffmpeg` command-line executable, the same
+  shared-library layout, and mandatory JXL/SVG decoding through libjxl and
+  librsvg 2.62.3. The workflow uploads both FFmpeg Actions artifacts immediately
+  after `Build FFmpeg`, then smoke-tests the GPLv3+nonfree build in a clean
   dyld environment and audits runtime dependencies. The smoke test includes
   x264 default-encoding regression cases so AArch64 assembly/runtime issues are
   caught before mpv starts. Later smoke, audit, or mpv failures do not remove
