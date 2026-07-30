@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Expire user-owned NuGet packages associated with the current repository."""
+"""Expire user-owned NuGet package versions associated with the current repository."""
 
 from __future__ import annotations
 
@@ -20,10 +20,11 @@ VALID_CLEANUP_ACTIONS = {"dry-run", "delete"}
 
 
 @dataclass(frozen=True)
-class ExpiredPackage:
-    name: str
-    updated_at: datetime
-    version_count: int = 0
+class PackageVersion:
+    package_name: str
+    version_id: int
+    version_name: str
+    created_at: datetime
 
 
 @dataclass(frozen=True)
@@ -34,7 +35,7 @@ class SkippedPackage:
 
 @dataclass(frozen=True)
 class DeleteFailure:
-    package: ExpiredPackage
+    version: PackageVersion
     detail: str
 
 
@@ -114,17 +115,15 @@ def list_paginated_with_query(
     return items
 
 
-def parse_github_timestamp(value: object, package_name: str) -> datetime:
+def parse_github_timestamp(value: object, subject: str) -> datetime:
     if not isinstance(value, str) or not value:
-        raise RuntimeError(f"NuGet package {package_name} has no updated_at timestamp")
+        raise RuntimeError(f"{subject} has no created_at timestamp")
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError as exc:
-        raise RuntimeError(
-            f"NuGet package {package_name} has invalid updated_at timestamp: {value}"
-        ) from exc
+        raise RuntimeError(f"{subject} has invalid created_at timestamp: {value}") from exc
     if parsed.tzinfo is None:
-        raise RuntimeError(f"NuGet package {package_name} has a timezone-free updated_at timestamp")
+        raise RuntimeError(f"{subject} has a timezone-free created_at timestamp")
     return parsed.astimezone(timezone.utc)
 
 
@@ -135,14 +134,13 @@ def repository_name(package: dict[str, object]) -> str:
     return str(repository.get("full_name") or "")
 
 
-def select_expired_packages(
+def select_managed_packages(
     packages: list[dict[str, object]],
     expected_repository: str,
-    cutoff: datetime,
-) -> tuple[int, list[ExpiredPackage], list[SkippedPackage]]:
-    managed_count = 0
-    expired: list[ExpiredPackage] = []
+) -> tuple[list[str], list[SkippedPackage]]:
+    managed: list[str] = []
     skipped: list[SkippedPackage] = []
+    seen_names: set[str] = set()
 
     for package in packages:
         name = str(package.get("name") or "")
@@ -161,66 +159,109 @@ def select_expired_packages(
             skipped.append(SkippedPackage(display_name, "missing package name"))
             continue
 
-        updated_at = parse_github_timestamp(package.get("updated_at"), name)
-        managed_count += 1
-        if updated_at < cutoff:
-            expired.append(ExpiredPackage(name=name, updated_at=updated_at))
+        if name in seen_names:
+            raise RuntimeError(f"GitHub API returned duplicate NuGet package {name}")
+        seen_names.add(name)
+        managed.append(name)
 
-    expired.sort(key=lambda package: (package.updated_at, package.name))
+    managed.sort()
     skipped.sort(key=lambda package: package.name)
-    return managed_count, expired, skipped
+    return managed, skipped
 
 
-def count_expired_versions(
-    packages: list[ExpiredPackage],
+def collect_package_versions(
+    package_names: list[str],
     owner: str,
     token: str,
     api_url: str,
-) -> list[ExpiredPackage]:
-    counted: list[ExpiredPackage] = []
-    for package in packages:
-        encoded_name = urllib.parse.quote(package.name, safe="")
+) -> list[PackageVersion]:
+    collected: list[PackageVersion] = []
+    seen_versions: set[tuple[str, int]] = set()
+
+    for package_name in package_names:
+        encoded_name = urllib.parse.quote(package_name, safe="")
         versions_path = f"/users/{owner}/packages/nuget/{encoded_name}/versions"
         try:
             versions = list_paginated(versions_path, token, api_url)
         except urllib.error.HTTPError as exc:
             raise RuntimeError(
-                f"failed to list versions for NuGet package {package.name}: HTTP {exc.code}"
+                f"failed to list versions for NuGet package {package_name}: HTTP {exc.code}"
             ) from exc
         except urllib.error.URLError as exc:
             raise RuntimeError(
-                f"failed to list versions for NuGet package {package.name}: {exc.reason}"
+                f"failed to list versions for NuGet package {package_name}: {exc.reason}"
             ) from exc
-        counted.append(
-            ExpiredPackage(
-                name=package.name,
-                updated_at=package.updated_at,
-                version_count=len(versions),
+
+        for version in versions:
+            version_name = str(version.get("name") or "")
+            display_name = version_name or "<unnamed>"
+            subject = f"NuGet package version {package_name}@{display_name}"
+            version_id = version.get("id")
+            if (
+                not isinstance(version_id, int)
+                or isinstance(version_id, bool)
+                or version_id <= 0
+            ):
+                raise RuntimeError(f"{subject} has invalid id: {version_id!r}")
+            if not version_name:
+                raise RuntimeError(f"NuGet package {package_name} has a version with no name")
+
+            version_key = (package_name, version_id)
+            if version_key in seen_versions:
+                raise RuntimeError(
+                    f"GitHub API returned duplicate NuGet package version "
+                    f"{package_name}@{version_name} ({version_id})"
+                )
+            seen_versions.add(version_key)
+            collected.append(
+                PackageVersion(
+                    package_name=package_name,
+                    version_id=version_id,
+                    version_name=version_name,
+                    created_at=parse_github_timestamp(version.get("created_at"), subject),
+                )
             )
+
+    collected.sort(
+        key=lambda version: (
+            version.created_at,
+            version.package_name,
+            version.version_name,
+            version.version_id,
         )
-    return counted
+    )
+    return collected
+
+
+def select_expired_versions(
+    versions: list[PackageVersion],
+    cutoff: datetime,
+) -> list[PackageVersion]:
+    return [version for version in versions if version.created_at < cutoff]
 
 
 def execute_deletions(
-    packages: list[ExpiredPackage],
+    versions: list[PackageVersion],
     owner: str,
     token: str,
     api_url: str,
-) -> tuple[list[ExpiredPackage], list[DeleteFailure]]:
-    deleted: list[ExpiredPackage] = []
+) -> tuple[list[PackageVersion], list[DeleteFailure]]:
+    deleted: list[PackageVersion] = []
     failures: list[DeleteFailure] = []
 
-    for package in packages:
-        encoded_name = urllib.parse.quote(package.name, safe="")
-        delete_path = f"/users/{owner}/packages/nuget/{encoded_name}"
+    for version in versions:
+        encoded_name = urllib.parse.quote(version.package_name, safe="")
+        delete_path = (
+            f"/users/{owner}/packages/nuget/{encoded_name}/versions/{version.version_id}"
+        )
         try:
             github_delete(delete_path, token, api_url)
         except urllib.error.HTTPError as exc:
-            failures.append(DeleteFailure(package, f"HTTP {exc.code}"))
+            failures.append(DeleteFailure(version, f"HTTP {exc.code}"))
         except urllib.error.URLError as exc:
-            failures.append(DeleteFailure(package, f"network error: {exc.reason}"))
+            failures.append(DeleteFailure(version, f"network error: {exc.reason}"))
         else:
-            deleted.append(package)
+            deleted.append(version)
 
     return deleted, failures
 
@@ -236,52 +277,59 @@ def write_summary(
     cutoff: datetime,
     scanned_count: int,
     managed_count: int,
-    expired: list[ExpiredPackage],
+    scanned_versions: int,
+    expired: list[PackageVersion],
     skipped: list[SkippedPackage],
-    deleted: list[ExpiredPackage],
+    deleted: list[PackageVersion],
     failures: list[DeleteFailure],
 ) -> None:
-    expired_versions = sum(package.version_count for package in expired)
-    deleted_versions = sum(package.version_count for package in deleted)
     with summary.open("a", encoding="utf-8") as handle:
         handle.write("## NuGet package expiration\n\n")
         handle.write(f"- action: `{action}`\n")
         handle.write(f"- feed: `{feed_url}`\n")
-        handle.write(f"- retention: {MAX_PACKAGE_AGE_DAYS} days from package `updated_at`\n")
+        handle.write(
+            f"- retention: {MAX_PACKAGE_AGE_DAYS} days from package version `created_at`\n"
+        )
         handle.write(f"- cutoff: `{format_timestamp(cutoff)}`\n")
         handle.write(f"- scanned account packages: {scanned_count}\n")
         handle.write(f"- managed repository packages: {managed_count}\n")
-        handle.write(f"- retained managed packages: {managed_count - len(expired)}\n")
-        handle.write(f"- expired packages: {len(expired)}\n")
-        handle.write(f"- expired package versions: {expired_versions}\n")
-        handle.write(f"- deleted packages: {len(deleted)}\n")
-        handle.write(f"- deleted package versions: {deleted_versions}\n")
+        handle.write(f"- scanned managed package versions: {scanned_versions}\n")
+        handle.write(
+            f"- retained managed package versions: {scanned_versions - len(expired)}\n"
+        )
+        handle.write(f"- expired package versions: {len(expired)}\n")
+        handle.write(f"- deleted package versions: {len(deleted)}\n")
         handle.write(f"- failed deletions: {len(failures)}\n")
         handle.write(f"- skipped account packages: {len(skipped)}\n")
 
         if action == "dry-run":
-            handle.write("\n### Expired packages (dry run)\n\n")
+            handle.write("\n### Expired package versions (dry run)\n\n")
             if not expired:
                 handle.write("- none\n")
-            for package in expired:
+            for version in expired:
                 handle.write(
-                    f"- `{package.name}`: updated `{format_timestamp(package.updated_at)}`, "
-                    f"versions {package.version_count}\n"
+                    f"- `{version.package_name}@{version.version_name}`: "
+                    f"created `{format_timestamp(version.created_at)}`, "
+                    f"id `{version.version_id}`\n"
                 )
         else:
-            handle.write("\n### Deleted packages\n\n")
+            handle.write("\n### Deleted package versions\n\n")
             if not deleted:
                 handle.write("- none\n")
-            for package in deleted:
+            for version in deleted:
                 handle.write(
-                    f"- `{package.name}`: updated `{format_timestamp(package.updated_at)}`, "
-                    f"versions {package.version_count}\n"
+                    f"- `{version.package_name}@{version.version_name}`: "
+                    f"created `{format_timestamp(version.created_at)}`, "
+                    f"id `{version.version_id}`\n"
                 )
 
         if failures:
             handle.write("\n### Failed deletions\n\n")
             for failure in failures:
-                handle.write(f"- `{failure.package.name}`: {failure.detail}\n")
+                handle.write(
+                    f"- `{failure.version.package_name}@{failure.version.version_name}` "
+                    f"(id `{failure.version.version_id}`): {failure.detail}\n"
+                )
 
         if skipped:
             handle.write("\n### Skipped account packages\n\n")
@@ -334,12 +382,12 @@ def main() -> int:
             api_url,
             {"package_type": "nuget"},
         )
-        managed_count, expired, skipped = select_expired_packages(
+        managed_packages, skipped = select_managed_packages(
             packages,
             repository,
-            cutoff,
         )
-        expired = count_expired_versions(expired, owner, token, api_url)
+        versions = collect_package_versions(managed_packages, owner, token, api_url)
+        expired = select_expired_versions(versions, cutoff)
     except urllib.error.HTTPError as exc:
         detail = f"GitHub API request failed with HTTP {exc.code}"
         print(f"error: {detail}", file=sys.stderr)
@@ -355,7 +403,7 @@ def main() -> int:
         write_error_summary(summary, action, str(exc))
         return 1
 
-    deleted: list[ExpiredPackage] = []
+    deleted: list[PackageVersion] = []
     failures: list[DeleteFailure] = []
     if action == "delete":
         deleted, failures = execute_deletions(expired, owner, token, api_url)
@@ -366,7 +414,8 @@ def main() -> int:
         feed_url=feed_url,
         cutoff=cutoff,
         scanned_count=len(packages),
-        managed_count=managed_count,
+        managed_count=len(managed_packages),
+        scanned_versions=len(versions),
         expired=expired,
         skipped=skipped,
         deleted=deleted,
@@ -375,9 +424,10 @@ def main() -> int:
 
     print(
         f"NuGet expiration complete: action={action}, scanned={len(packages)}, "
-        f"managed={managed_count}, expired={len(expired)}, "
-        f"expired_versions={sum(package.version_count for package in expired)}, "
-        f"deleted={len(deleted)}, failures={len(failures)}."
+        f"managed_packages={len(managed_packages)}, scanned_versions={len(versions)}, "
+        f"retained_versions={len(versions) - len(expired)}, "
+        f"expired_versions={len(expired)}, "
+        f"deleted_versions={len(deleted)}, failures={len(failures)}."
     )
     return 1 if failures else 0
 

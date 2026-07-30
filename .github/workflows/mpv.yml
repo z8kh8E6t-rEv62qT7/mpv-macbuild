@@ -24,7 +24,7 @@ on:
           - delete
         default: dry-run
       run_ffmpeg_fate:
-        description: "Run the full upstream FFmpeg FATE suite after building FFmpeg."
+        description: "Run non-blocking upstream FATE for both FFmpeg profiles after building FFmpeg."
         required: false
         type: boolean
         default: false
@@ -202,9 +202,10 @@ jobs:
         id: ffmpeg-runtime-audit
         run: bash builder/scripts/audit/audit-ffmpeg-runtime.sh
 
-      - name: Run full FFmpeg FATE suite
+      - name: Run diagnostic FATE for both FFmpeg profiles
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_ffmpeg_fate }}
         id: ffmpeg-fate
+        continue-on-error: true
         run: bash builder/scripts/build/run-ffmpeg-fate.sh
 
       - name: Configure mpv with Meson

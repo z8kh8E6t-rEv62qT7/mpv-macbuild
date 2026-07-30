@@ -16,8 +16,15 @@ gh workflow run mpv.yml \
   --repo z8kh8E6t-rEv62qT7/mpv-macbuild \
   --ref master \
   -f mpv_ref=latest \
-  -f ffmpeg_ref=latest
+  -f ffmpeg_ref=latest \
+  -f run_ffmpeg_fate=false
 ```
+
+Set `run_ffmpeg_fate=true` to run the full upstream FATE suite sequentially
+against both the GPLv3+nonfree and LGPL FFmpeg profiles. FATE is diagnostic:
+sample synchronization, setup, test, or result-collection failures emit
+warnings and are recorded in the job summary and full audit artifact, but do
+not block the later mpv build, GitHub Release publishing, or NuGet maintenance.
 
 Watch the newest run:
 
@@ -62,10 +69,11 @@ Release behavior:
   build/test/bundle on the same runner so the temp prefixes stay local. Inside
   the job, `Build source` finishes vcpkg/custom static deps, `Build FFmpeg`
   creates the FFmpeg install prefix, and the FFmpeg Actions artifact is uploaded
-  before its clean-runtime smoke test, runtime dependency audit, and the later
-  mpv configure/build/test/bundle steps. The mpv Actions artifact is also
-  uploaded before bundle runtime audit. Package retention audit runs after both
-  artifact upload points.
+  before its clean-runtime smoke test, runtime dependency audit, optional
+  non-blocking FATE runs for both FFmpeg profiles, and the later mpv
+  configure/build/test/bundle steps. The mpv Actions artifact is also uploaded
+  before bundle runtime audit. Package retention audit runs after both artifact
+  upload points.
 - `publish-release` runs on `ubuntu-latest` only after a successful release
   build and uploads the two final tarballs to the GitHub Release identified by
   `mpv-<mpv-ref>-ffmpeg-<ffmpeg-ref>-macos15-arm64`.
@@ -104,14 +112,17 @@ Release behavior:
 - The workflow also exposes a GitHub Packages NuGet cache for vcpkg:
   ordinary `push` runs read from NuGet only, while `workflow_dispatch` and
   `push` commits tagged with `[release]` enable `readwrite` mode so vcpkg can
-  publish back into the NuGet cache.
-- NuGet maintenance uses a fixed package-level 30-day TTL. The manual workflow
-  defaults to reporting expired packages without deleting them, while a
-  manually selected `delete` action and `[release]` pushes remove each expired
-  package together with all of its versions.
+  publish back into the NuGet cache. NuGet network operations use a 300-second
+  timeout so large binary packages are not limited by vcpkg's 100-second
+  default.
+- NuGet maintenance uses a strict 30-day TTL for individual package versions,
+  measured from each version's immutable `created_at` timestamp. The manual
+  workflow defaults to reporting expired versions without deleting them, while
+  a manually selected `delete` action and `[release]` pushes remove every
+  expired version. No newest-version exemption is applied, so a package
+  disappears when its final version expires.
 - GitHub Packages does not expose a last-download timestamp through this API.
-  The TTL is therefore based on package `updated_at`, which records publication
-  or metadata updates and is not refreshed when a build consumes the cache.
+  Consuming a cached version therefore does not refresh its TTL.
 - Actions cache and NuGet cache are intentionally treated differently:
   `actions/cache` speeds up rebuilds when available, while GitHub Packages
   NuGet is the persistence layer this workflow explicitly maintains.
@@ -231,7 +242,8 @@ Artifacts:
   from the run.
 - `package-audit-<mpv-ref>-<ffmpeg-ref>`: package and feature audit.
 - `full-audit-<mpv-ref>-<ffmpeg-ref>`: package audit plus FFmpeg and bundle
-  `otool` data.
+  `otool` data; when FATE is enabled, it also contains the combined FATE
+  summary, per-profile command logs, and complete failing-test lists.
 
 ## Dyphire alignment
 

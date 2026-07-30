@@ -66,7 +66,7 @@ configure_vcpkg_binary_sources() {
       *) die "unsupported NUGET_CACHE_MODE: $nuget_mode" ;;
     esac
 
-    VCPKG_BINARY_SOURCES="$VCPKG_BINARY_SOURCES;nugetconfig,$NUGET_CONFIG_PATH,$nuget_mode"
+    VCPKG_BINARY_SOURCES="$VCPKG_BINARY_SOURCES;nugetconfig,$NUGET_CONFIG_PATH,$nuget_mode;nugettimeout,300"
   fi
 
   export VCPKG_BINARY_SOURCES
