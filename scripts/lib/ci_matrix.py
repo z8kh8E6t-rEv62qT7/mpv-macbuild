@@ -228,7 +228,6 @@ FFMPEG_FLAGS = [
     ("librsvg", "--enable-librsvg"),
     ("librtmp", "--enable-librtmp"),
     ("librubberband", "--enable-librubberband"),
-    ("libshaderc", "--enable-libshaderc"),
     ("libsnappy", "--enable-libsnappy"),
     ("libsoxr", "--enable-libsoxr"),
     ("libssh", "--enable-libssh"),

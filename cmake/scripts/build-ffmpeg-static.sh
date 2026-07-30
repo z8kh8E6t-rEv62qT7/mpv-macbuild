@@ -119,7 +119,6 @@ configure_ffmpeg() {
     --enable-libjxl \
     --enable-libplacebo \
     --enable-librsvg \
-    --enable-libshaderc \
     --enable-libzvbi \
     --enable-libaribcaption \
     --enable-libvvenc \

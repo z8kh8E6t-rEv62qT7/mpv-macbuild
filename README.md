@@ -323,7 +323,7 @@ applicable.
 | mujs | Source static/mpv | Used by mpv JavaScript support. |
 | libarchive | Source static/mpv | mpv `libarchive` is forced on. |
 | libjpeg | Source static/mpv | `jpeg-turbo` source package backs mpv `jpeg`. |
-| shaderc | Source static/FFmpeg/libplacebo | Source-built in the static prefix and used by libplacebo/FFmpeg. |
+| shaderc | Source static/libplacebo + FFmpeg build tool | Source-built in the static prefix, linked by libplacebo, and supplies `glslc` for FFmpeg build-time SPIR-V compilation. |
 | speex | Source static/FFmpeg | Audited as `--enable-libspeex`. |
 | spirv-cross | Source static | Retained for shader/Vulkan package coverage. |
 | fribidi | Source static | Provided by vcpkg and used by the libass overlay plus FFmpeg. |
