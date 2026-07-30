@@ -5,8 +5,8 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/common.sh"
 
 require_github_file GITHUB_OUTPUT
 
-requested_mpv_ref="${REQUESTED_MPV_REF:-latest}"
-requested_ffmpeg_ref="${REQUESTED_FFMPEG_REF:-latest}"
+requested_mpv_ref="${REQUESTED_MPV_REF:-master}"
+requested_ffmpeg_ref="${REQUESTED_FFMPEG_REF:-master}"
 
 if [[ "$requested_mpv_ref" == "latest" ]]; then
   mpv_ref="$(gh api repos/mpv-player/mpv/releases/latest --jq .tag_name)"

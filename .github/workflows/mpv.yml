@@ -1,5 +1,5 @@
 name: MPV macOS
-run-name: "MPV macOS (mpv=${{ github.event.inputs.mpv_ref || 'latest' }}, ffmpeg=${{ github.event.inputs.ffmpeg_ref || 'latest' }})"
+run-name: "MPV macOS (mpv=${{ github.event.inputs.mpv_ref || 'master' }}, ffmpeg=${{ github.event.inputs.ffmpeg_ref || 'master' }})"
 
 on:
   push:
@@ -8,13 +8,13 @@ on:
   workflow_dispatch:
     inputs:
       mpv_ref:
-        description: "mpv tag, branch, or commit to build. Use latest for the newest release."
+        description: "mpv tag, branch, or commit to build. Defaults to master; use latest for the newest release."
         required: false
-        default: latest
+        default: master
       ffmpeg_ref:
-        description: "FFmpeg tag, branch, or commit to build. Use latest for the newest release tag."
+        description: "FFmpeg tag, branch, or commit to build. Defaults to master; use latest for the newest release tag."
         required: false
-        default: latest
+        default: master
       nuget_cleanup_action:
         description: "NuGet cache maintenance action after a successful write-enabled build."
         required: false
@@ -69,8 +69,8 @@ jobs:
         id: resolve
         env:
           GH_TOKEN: ${{ github.token }}
-          REQUESTED_MPV_REF: ${{ github.event.inputs.mpv_ref || 'latest' }}
-          REQUESTED_FFMPEG_REF: ${{ github.event.inputs.ffmpeg_ref || 'latest' }}
+          REQUESTED_MPV_REF: ${{ github.event.inputs.mpv_ref || 'master' }}
+          REQUESTED_FFMPEG_REF: ${{ github.event.inputs.ffmpeg_ref || 'master' }}
         run: bash scripts/build/resolve-refs.sh
 
       - name: Compute release metadata

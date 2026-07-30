@@ -8,7 +8,6 @@ require_var FFMPEG_REF
 
 ffmpeg_patches=(
   "$BUILDER_DIR/patch/ffmpeg-0001-avformat-some-subtitle-optimizations.patch"
-  "$BUILDER_DIR/patch/ffmpeg-0002-avformat-spdifenc-handle-long-TrueHD-input_timing.patch"
   "$BUILDER_DIR/patch/ffmpeg-0003-fftools-rename-dec-init.patch"
   "$BUILDER_DIR/patch/ffmpeg-0004-avcodec-apv-parser-rename-close-callback.patch"
 )

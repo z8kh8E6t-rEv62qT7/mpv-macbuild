@@ -15,8 +15,8 @@ Run the workflow manually:
 gh workflow run mpv.yml \
   --repo z8kh8E6t-rEv62qT7/mpv-macbuild \
   --ref master \
-  -f mpv_ref=latest \
-  -f ffmpeg_ref=latest \
+  -f mpv_ref=master \
+  -f ffmpeg_ref=master \
   -f run_ffmpeg_fate=false
 ```
 
@@ -84,9 +84,11 @@ Release behavior:
 
 ## Build model
 
-- `mpv_ref=latest` resolves to the latest GitHub release from `mpv-player/mpv`.
-- `ffmpeg_ref=latest` resolves to the latest FFmpeg release tag, such as
-  `n8.1.1`; FFmpeg is not built from `master` by default.
+- `mpv_ref` and `ffmpeg_ref` default to `master`, so ordinary pushes and manual
+  runs build the current upstream branch heads.
+- `mpv_ref=latest` still resolves to the latest GitHub release from
+  `mpv-player/mpv`; `ffmpeg_ref=latest` resolves to the latest FFmpeg release
+  tag, such as `n8.1.1`, when a release build is requested explicitly.
 - Homebrew installs build tools only: LLVM/lld, CMake, Ninja, Meson, pkgconf,
   autotools, libtool, nasm, Rust/cargo-c, Python, mono, git, curl, and
   related build helpers.
@@ -213,10 +215,9 @@ Custom source-built and overlay-managed components include:
 - `libiconv` uses Apple's system `libiconv` on macOS. mpv keeps `iconv`
   enabled with explicit Meson-stage link flags, and FFmpeg keeps
   `--enable-iconv`.
-- FFmpeg latest release, linked against static vcpkg and source-built
-  dependencies.
-- Dyphire source behavior patches for libass subtitles, FFmpeg ASS/subtitle
-  probing, and TrueHD SPDIF timing.
+- FFmpeg `master`, linked against static vcpkg and source-built dependencies.
+- Dyphire source behavior patches for libass subtitles and FFmpeg ASS/subtitle
+  probing. TrueHD SPDIF timing uses FFmpeg's upstream implementation.
 
 Vulkan compile-time headers and registry files now come from the source prefix,
 not from the vcpkg static prefix.
@@ -248,14 +249,15 @@ Artifacts:
 ## Dyphire alignment
 
 The macOS workflow ports dyphire's source-level behavior patches where they
-apply cleanly:
+apply cleanly and otherwise relies on equivalent upstream behavior:
 
 - libass: parse `ScriptType:` even when `[Script Info]` is missing.
 - libplacebo: apply upstream MR !850 for PQ/HDR metadata black-level handling
   and MR !852 for HDR linear scaling behavior while both MRs remain open.
 - FFmpeg subtitles: broader ASS probing, UTF-16 double-BOM handling, and
   preserved negative ASS event durations.
-- FFmpeg SPDIF: tolerate long TrueHD `input_timing` gaps.
+- FFmpeg SPDIF: rely on upstream TrueHD MAT padding and timing-discontinuity
+  handling.
 - FFmpeg/libvmaf close symbol hygiene: internal parser/feature callbacks named
   `close` are renamed so ld64.lld/Thin-LTO cannot bind POSIX `close(fd)` to a
   local static callback. This keeps optimization, LTO, linker, and feature

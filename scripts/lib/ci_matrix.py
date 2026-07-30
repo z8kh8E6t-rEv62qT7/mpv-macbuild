@@ -319,7 +319,6 @@ APPLIED_PATCHES = [
     "patch/libcdio-paranoia-0001-build-libraries-only.patch",
     "patch/libbs2b-0001-build-library-without-sndfile-tools.patch",
     "patch/ffmpeg-0001-avformat-some-subtitle-optimizations.patch",
-    "patch/ffmpeg-0002-avformat-spdifenc-handle-long-TrueHD-input_timing.patch",
     "patch/ffmpeg-0003-fftools-rename-dec-init.patch",
     "patch/ffmpeg-0004-avcodec-apv-parser-rename-close-callback.patch",
     "patch/mpv-0001-macos-bundle-luarocks-search-paths.patch",
