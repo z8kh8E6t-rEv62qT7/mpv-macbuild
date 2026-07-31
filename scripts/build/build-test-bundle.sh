@@ -9,7 +9,7 @@ phase="${1:-all}"
 cd "$MPV_DIR"
 
 run_build() {
-  run_logged "mpv-meson-compile" meson compile -C build -j4
+  run_logged "mpv-meson-compile" meson compile -C build -j4 --verbose
   run_logged "mpv-normalize-build-runtime" normalize_mpv_build_runtime
   run_logged "mpv-meson-install" meson install -C build
   run_logged "mpv-smoke-test" ./build/mpv -v --no-config
