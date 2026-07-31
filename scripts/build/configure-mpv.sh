@@ -97,6 +97,38 @@ assert_mpv_ffmpeg_pkg_config_resolves_to_ffmpeg_prefix() {
   done
 }
 
+resolve_mpv_ffmpeg_header_version() {
+  local package="$1"
+  local macro_prefix
+  local output
+
+  macro_prefix="$(printf '%s' "$package" | tr '[:lower:]' '[:upper:]')"
+  output="$(
+    # CFLAGS is intentionally expanded into the compiler arguments.
+    # shellcheck disable=SC2086
+    "$CC" $CFLAGS -E -P -x c - <<EOF
+#include <$package/version.h>
+${macro_prefix}_VERSION_MAJOR.${macro_prefix}_VERSION_MINOR.${macro_prefix}_VERSION_MICRO
+EOF
+  )"
+  output="${output##*$'\n'}"
+  printf '%s' "$output" | tr -d '[:space:]'
+}
+
+assert_mpv_ffmpeg_headers_match_pkg_config() {
+  local package
+  local expected_version
+  local header_version
+
+  for package in "${mpv_ffmpeg_pkg_config_packages[@]}"; do
+    expected_version="$(pkg-config --modversion "$package")"
+    header_version="$(resolve_mpv_ffmpeg_header_version "$package")"
+    [[ "$header_version" == "$expected_version" ]] ||
+      die "$package header version $header_version does not match pkg-config version $expected_version"
+    echo "$package header version: $header_version"
+  done
+}
+
 assert_mpv_build_uses_ffmpeg_prefix_archives() {
   local build_ninja="build/build.ninja"
   local package
@@ -155,9 +187,12 @@ rm -rf build
 run_logged "mpv-apply-patches" apply_mpv_patches
 create_mpv_ffmpeg_pkg_config_overlay
 assert_mpv_ffmpeg_pkg_config_resolves_to_ffmpeg_prefix
-export CFLAGS="$CFLAGS -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3"
-export CXXFLAGS="$CXXFLAGS $MPV_FFMPEG_CXX_DISABLE"
-export OBJCXXFLAGS="$OBJCXXFLAGS $MPV_FFMPEG_CXX_DISABLE"
+ffmpeg_include_flag="-I$FFMPEG_PREFIX/include"
+export CFLAGS="$ffmpeg_include_flag $CFLAGS -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3"
+export CXXFLAGS="$ffmpeg_include_flag $CXXFLAGS $MPV_FFMPEG_CXX_DISABLE"
+export OBJCFLAGS="$ffmpeg_include_flag $OBJCFLAGS"
+export OBJCXXFLAGS="$ffmpeg_include_flag $OBJCXXFLAGS $MPV_FFMPEG_CXX_DISABLE"
+run_logged "mpv-validate-ffmpeg-headers" assert_mpv_ffmpeg_headers_match_pkg_config
 mpv_iconv_link_flags="$(resolve_mpv_iconv_link_flags)"
 export LDFLAGS="${LDFLAGS:+$LDFLAGS }$mpv_iconv_link_flags"
 export LDFLAGS="$LDFLAGS -Wl,-rpath,$SOURCE_PREFIX/lib/vapoursynth"
