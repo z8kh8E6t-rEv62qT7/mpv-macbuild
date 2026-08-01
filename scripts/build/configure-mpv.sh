@@ -18,6 +18,25 @@ mpv_patches=(
   "$BUILDER_DIR/patch/mpv-0001-macos-bundle-luarocks-search-paths.patch"
 )
 
+remove_bootstrap_vcpkg_ffmpeg_headers() {
+  local package
+  local header_dir
+
+  [[ -n "${VCPKG_TARGET_PREFIX:-}" && "$VCPKG_TARGET_PREFIX" != "/" ]] ||
+    die "unsafe vcpkg target prefix: ${VCPKG_TARGET_PREFIX:-<empty>}"
+
+  for package in "${mpv_ffmpeg_pkg_config_packages[@]}"; do
+    header_dir="$VCPKG_TARGET_PREFIX/include/$package"
+    if [[ -e "$header_dir" || -L "$header_dir" ]]; then
+      rm -rf "$header_dir"
+      echo "removed bootstrap vcpkg FFmpeg headers: $header_dir"
+    fi
+
+    [[ ! -e "$header_dir" && ! -L "$header_dir" ]] ||
+      die "bootstrap vcpkg FFmpeg headers remain visible to mpv: $header_dir"
+  done
+}
+
 create_mpv_ffmpeg_pkg_config_overlay() {
   local overlay_dir="$BUILD_ROOT/mpv-pkgconfig/ffmpeg"
   local package
@@ -185,6 +204,7 @@ resolve_mpv_iconv_link_flags() {
 cd "$MPV_DIR"
 rm -rf build
 run_logged "mpv-apply-patches" apply_mpv_patches
+run_logged "mpv-remove-bootstrap-ffmpeg-headers" remove_bootstrap_vcpkg_ffmpeg_headers
 create_mpv_ffmpeg_pkg_config_overlay
 assert_mpv_ffmpeg_pkg_config_resolves_to_ffmpeg_prefix
 ffmpeg_include_flag="-I$FFMPEG_PREFIX/include"

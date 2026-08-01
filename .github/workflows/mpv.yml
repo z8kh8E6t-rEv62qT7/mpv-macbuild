@@ -275,14 +275,6 @@ jobs:
         if: ${{ failure() }}
         run: bash builder/scripts/diagnostics/print-ci-diagnostics.sh
 
-      - name: Upload Meson compile database
-        if: ${{ always() && steps.configure.outcome == 'success' }}
-        uses: actions/upload-artifact@v7
-        with:
-          name: meson-compile-commands-${{ needs.params.outputs.safe_mpv_ref }}-${{ needs.params.outputs.safe_ffmpeg_ref }}
-          path: mpv/build/compile_commands.json
-          if-no-files-found: error
-
       - name: Upload full audit
         if: ${{ always() }}
         uses: actions/upload-artifact@v7
