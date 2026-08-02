@@ -182,9 +182,10 @@ fix_vapoursynth_bundle_refs() {
   [[ -d "$runtime_dir" ]] || die "missing bundled VapourSynth runtime dir: $runtime_dir"
   normalize_vapoursynth_runtime_dir "$runtime_dir"
   while IFS= read -r target; do
+    is_mach_o "$target" || continue
+    delete_rpath_if_present "$target" "$SOURCE_PREFIX/lib/vapoursynth"
     has_vapoursynth_ref "$target" || continue
     rewrite_vapoursynth_ref "$target" "@rpath/libvsscript.dylib"
-    delete_rpath_if_present "$target" "$SOURCE_PREFIX/lib/vapoursynth"
     if [[ "$target" == "$bundle_binary" ]]; then
       add_rpath_if_missing "$target" "@executable_path/../Resources/source-built/vapoursynth"
     else
