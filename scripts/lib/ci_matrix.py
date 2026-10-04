@@ -1,7 +1,7 @@
 """Central package/audit policy for the macOS CI build."""
 
 VULKAN_SDK_TAG = "vulkan-sdk-1.4.363.0"
-VULKAN_SDK_VERSION = "1.4.363"
+VULKAN_SDK_VERSION = VULKAN_SDK_TAG.removeprefix("vulkan-sdk-").removesuffix(".0")
 
 MPV_FEATURES = [
     "caca",

@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
 # One package contract for staging, auditing and smoke tests.
 ffmpeg_package_profile() {

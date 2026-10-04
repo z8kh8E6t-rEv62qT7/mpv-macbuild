@@ -2,9 +2,10 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/common.sh"
+init_ci_environment
 source "$CI_SCRIPT_ROOT/lib/runtime-audit-common.sh"
 
-require_source_env
+require_build_environment source
 
 cd "$MPV_DIR"
 bundle_binary="build/mpv.app/Contents/MacOS/mpv"
@@ -53,7 +54,9 @@ mkdir -p "$AUDIT_DIR"
 run_logged "bundle-codesign-verify" codesign --verify --deep --strict --verbose=2 build/mpv.app
 run_logged "bundle-vulkan-manifest-libraries" audit_vulkan_manifest_libraries
 run_logged "bundle-main-otool" bash -c '
+  set -euo pipefail
   source "$3/common.sh"
+  init_ci_environment
   write_runtime_load_report "$1" > "$2"
 ' bash "$bundle_binary" "$AUDIT_DIR/bundle-otool.txt" "$CI_SCRIPT_DIR"
 run_logged "bundle-dynamic-file-list" sh -c 'find build/mpv.app -type f \( -name "*.dylib" -o -name "*.so" -o -name "*.bundle" \) | sort > "$1"' sh "$AUDIT_DIR/bundle-dynamic-files.txt"

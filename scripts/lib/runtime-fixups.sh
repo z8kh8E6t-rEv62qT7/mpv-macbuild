@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
 runtime_llvm_paths() {
   local llvm_prefix="${LLVM_PREFIX:?LLVM_PREFIX is not set}"

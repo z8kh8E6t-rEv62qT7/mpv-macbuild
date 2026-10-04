@@ -2,8 +2,9 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/common.sh"
+init_ci_environment
 
-require_source_env
+require_build_environment source
 
 ffmpeg_ref="${RESOLVED_FFMPEG_REF:-${FFMPEG_REF:-}}"
 [[ -n "$ffmpeg_ref" ]] || die "RESOLVED_FFMPEG_REF is not set"

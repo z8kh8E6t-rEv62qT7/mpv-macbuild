@@ -2,10 +2,11 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/common.sh"
+init_ci_environment
 source "$CI_SCRIPT_ROOT/lib/ffmpeg-package-common.sh"
 
 require_github_file GITHUB_OUTPUT
-require_source_env
+require_build_environment source
 
 output_dir="$MPV_DIR/release-assets"
 stage_dir="$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/ffmpeg-package.XXXXXX")"

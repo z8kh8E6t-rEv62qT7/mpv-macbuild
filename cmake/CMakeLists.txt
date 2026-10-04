@@ -15,140 +15,98 @@ set(BUILD_ROOT "" CACHE PATH "Build root")
 set(AUDIT_DIR "" CACHE PATH "CI audit and log output directory")
 set(FFMPEG_REF "" CACHE STRING "FFmpeg tag, branch, or commit")
 
-foreach(required BUILDER_DIR SOURCE_PREFIX FFMPEG_PREFIX FFMPEG_LGPL_PREFIX SOURCE_ROOT BUILD_ROOT AUDIT_DIR FFMPEG_REF)
-  if(NOT ${required})
-    message(FATAL_ERROR "${required} is required")
-  endif()
-endforeach()
-
-if(NOT DEFINED ENV{RUSTC} OR "$ENV{RUSTC}" STREQUAL "")
-  message(FATAL_ERROR "RUSTC is required")
-endif()
-if(NOT EXISTS "$ENV{RUSTC}")
-  message(FATAL_ERROR "RUSTC does not exist: $ENV{RUSTC}")
-endif()
-if(NOT DEFINED ENV{MPV_REAL_RUSTC} OR "$ENV{MPV_REAL_RUSTC}" STREQUAL "")
-  message(FATAL_ERROR "MPV_REAL_RUSTC is required")
-endif()
-if(NOT EXISTS "$ENV{MPV_REAL_RUSTC}")
-  message(FATAL_ERROR "MPV_REAL_RUSTC does not exist: $ENV{MPV_REAL_RUSTC}")
-endif()
-if(NOT DEFINED ENV{MPV_RUSTC_DIAGNOSTIC_LOG} OR "$ENV{MPV_RUSTC_DIAGNOSTIC_LOG}" STREQUAL "")
-  message(FATAL_ERROR "MPV_RUSTC_DIAGNOSTIC_LOG is required")
-endif()
-if(NOT DEFINED ENV{MPV_RUSTC_DEPLOYMENT_TARGET} OR "$ENV{MPV_RUSTC_DEPLOYMENT_TARGET}" STREQUAL "")
-  message(FATAL_ERROR "MPV_RUSTC_DEPLOYMENT_TARGET is required")
-endif()
-
 set(VCPKG_ROOT "${SOURCE_ROOT}/vcpkg")
 set(VCPKG_REF "5dd2e1600d049b498ff9fb9fe15997533ae0c804")
 set(VCPKG_INSTALLED_DIR "${SOURCE_PREFIX}/vcpkg-installed")
 set(VCPKG_TARGET_PREFIX "${VCPKG_INSTALLED_DIR}/arm64-osx-static")
 set(VCPKG_OVERLAY_PORTS_DIR "${CMAKE_CURRENT_LIST_DIR}/ports-overlay")
 
-set(SUPERBUILD_ENV
-  "BUILDER_DIR=${BUILDER_DIR}"
-  "SOURCE_PREFIX=${SOURCE_PREFIX}"
-  "FFMPEG_PREFIX=${FFMPEG_PREFIX}"
-  "FFMPEG_LGPL_PREFIX=${FFMPEG_LGPL_PREFIX}"
-  "SOURCE_ROOT=${SOURCE_ROOT}"
-  "BUILD_ROOT=${BUILD_ROOT}"
-  "AUDIT_DIR=${AUDIT_DIR}"
-  "FFMPEG_REF=${FFMPEG_REF}"
-  "VCPKG_ROOT=${VCPKG_ROOT}"
-  "VCPKG_INSTALLED_DIR=${VCPKG_INSTALLED_DIR}"
-  "VCPKG_TARGET_PREFIX=${VCPKG_TARGET_PREFIX}"
-  "VCPKG_BINARY_CACHE=$ENV{VCPKG_BINARY_CACHE}"
-  "NUGET_CACHE_MODE=$ENV{NUGET_CACHE_MODE}"
-  "NUGET_CACHE_REASON=$ENV{NUGET_CACHE_REASON}"
-  "NUGET_FEED_URL=$ENV{NUGET_FEED_URL}"
-  "NUGET_SOURCE_NAME=$ENV{NUGET_SOURCE_NAME}"
-  "NUGET_CONFIG_PATH=$ENV{NUGET_CONFIG_PATH}"
-  "MACOSX_DEPLOYMENT_TARGET=$ENV{MACOSX_DEPLOYMENT_TARGET}"
-  "CMAKE_OSX_DEPLOYMENT_TARGET=$ENV{CMAKE_OSX_DEPLOYMENT_TARGET}"
-  "LLVM_PREFIX=$ENV{LLVM_PREFIX}"
-  "LD64_LLD=$ENV{LD64_LLD}"
-  "CC=$ENV{CC}"
-  "CXX=$ENV{CXX}"
-  "OBJC=$ENV{OBJC}"
-  "OBJCXX=$ENV{OBJCXX}"
-  "AR=$ENV{AR}"
-  "RANLIB=$ENV{RANLIB}"
-  "STRIP=$ENV{STRIP}"
-  "NM=$ENV{NM}"
-  "LLVM_RANLIB=$ENV{LLVM_RANLIB}"
-  "LLVM_RES=$ENV{LLVM_RES}"
-  "LLVM_RESOURCE_FLAG=$ENV{LLVM_RESOURCE_FLAG}"
-  "LLVM_C_BUNDLE=$ENV{LLVM_C_BUNDLE}"
-  "LLVM_CXX_BUNDLE=$ENV{LLVM_CXX_BUNDLE}"
-  "LLVM_LINK_BUNDLE=$ENV{LLVM_LINK_BUNDLE}"
-  "LLVM_BUNDLE=$ENV{LLVM_BUNDLE}"
-  "LLVM_CXX_RUNTIME_DIR=$ENV{LLVM_CXX_RUNTIME_DIR}"
-  "LLVM_UNWIND_RUNTIME_DIR=$ENV{LLVM_UNWIND_RUNTIME_DIR}"
-  "LLVM_LIBCXX_DYLIB=$ENV{LLVM_LIBCXX_DYLIB}"
-  "LLVM_LIBCXXABI_DYLIB=$ENV{LLVM_LIBCXXABI_DYLIB}"
-  "LLVM_LIBUNWIND_DYLIB=$ENV{LLVM_LIBUNWIND_DYLIB}"
-  "LLVM_RUNTIME_LINK_FLAGS=$ENV{LLVM_RUNTIME_LINK_FLAGS}"
-  "CPU_FLAGS=$ENV{CPU_FLAGS}"
-  "OPTIMIZATIONS=$ENV{OPTIMIZATIONS}"
-  "MPV_FFMPEG_CXX_DISABLE=$ENV{MPV_FFMPEG_CXX_DISABLE}"
-  "LINK_PATH=$ENV{LINK_PATH}"
-  "INCLUDE_PATH=$ENV{INCLUDE_PATH}"
-  "CFLAGS=$ENV{CFLAGS}"
-  "CXXFLAGS=$ENV{CXXFLAGS}"
-  "OBJCFLAGS=$ENV{OBJCFLAGS}"
-  "OBJCXXFLAGS=$ENV{OBJCXXFLAGS}"
-  "LDFLAGS=$ENV{LDFLAGS}"
-  "SOURCE_LDFLAGS=$ENV{SOURCE_LDFLAGS}"
-  "VCPKG_TARGET_CC=$ENV{VCPKG_TARGET_CC}"
-  "VCPKG_TARGET_CXX=$ENV{VCPKG_TARGET_CXX}"
-  "VCPKG_TARGET_OBJC=$ENV{VCPKG_TARGET_OBJC}"
-  "VCPKG_TARGET_OBJCXX=$ENV{VCPKG_TARGET_OBJCXX}"
-  "VCPKG_TARGET_AR=$ENV{VCPKG_TARGET_AR}"
-  "VCPKG_TARGET_RANLIB=$ENV{VCPKG_TARGET_RANLIB}"
-  "VCPKG_TARGET_STRIP=$ENV{VCPKG_TARGET_STRIP}"
-  "VCPKG_TARGET_NM=$ENV{VCPKG_TARGET_NM}"
-  "CARGO_PROFILE_RELEASE_OPT_LEVEL=$ENV{CARGO_PROFILE_RELEASE_OPT_LEVEL}"
-  "CARGO_PROFILE_RELEASE_LTO=$ENV{CARGO_PROFILE_RELEASE_LTO}"
-  "CARGO_PROFILE_RELEASE_CODEGEN_UNITS=$ENV{CARGO_PROFILE_RELEASE_CODEGEN_UNITS}"
-  "CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER=$ENV{CARGO_TARGET_AARCH64_APPLE_DARWIN_LINKER}"
-  "CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS=$ENV{CARGO_TARGET_AARCH64_APPLE_DARWIN_RUSTFLAGS}"
-  "MPV_REAL_RUSTC=$ENV{MPV_REAL_RUSTC}"
-  "MPV_RUSTC_DIAGNOSTIC_LOG=$ENV{MPV_RUSTC_DIAGNOSTIC_LOG}"
-  "MPV_RUSTC_DEPLOYMENT_TARGET=$ENV{MPV_RUSTC_DEPLOYMENT_TARGET}"
-  "RUSTC=$ENV{RUSTC}"
-  "RUSTFLAGS=$ENV{RUSTFLAGS}"
-  "GITHUB_TOKEN=$ENV{GITHUB_TOKEN}"
-  "GITHUB_API_URL=$ENV{GITHUB_API_URL}"
-  "GITHUB_REPOSITORY=$ENV{GITHUB_REPOSITORY}"
-  "GITHUB_REPOSITORY_OWNER=$ENV{GITHUB_REPOSITORY_OWNER}"
-  "PKG_CONFIG_LIBDIR=${FFMPEG_PREFIX}/lib/pkgconfig:${FFMPEG_PREFIX}/share/pkgconfig:${SOURCE_PREFIX}/lib/pkgconfig:${SOURCE_PREFIX}/share/pkgconfig:${VCPKG_TARGET_PREFIX}/lib/pkgconfig:${VCPKG_TARGET_PREFIX}/share/pkgconfig"
-  "PKG_CONFIG_PATH="
-)
+set(BUILD_ENVIRONMENT_FILE "${BUILDER_DIR}/scripts/lib/build-environment.json")
+if(NOT EXISTS "${BUILD_ENVIRONMENT_FILE}")
+  message(FATAL_ERROR "build environment declaration is missing: ${BUILD_ENVIRONMENT_FILE}")
+endif()
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${BUILD_ENVIRONMENT_FILE}")
+file(READ "${BUILD_ENVIRONMENT_FILE}" BUILD_ENVIRONMENT_JSON)
+string(JSON BUILD_ENVIRONMENT_LENGTH LENGTH "${BUILD_ENVIRONMENT_JSON}")
+if(BUILD_ENVIRONMENT_LENGTH LESS 1)
+  message(FATAL_ERROR "build environment declaration is empty")
+endif()
 
-set(VCPKG_INSTALL_ENV
-  ${SUPERBUILD_ENV}
-  "CFLAGS="
-  "CXXFLAGS="
-  "OBJCFLAGS="
-  "OBJCXXFLAGS="
-  "CPPFLAGS="
-  "LDFLAGS="
-  "CPATH="
-  "LIBRARY_PATH="
-  "DYLD_LIBRARY_PATH="
-  "CMAKE_PREFIX_PATH="
-  "MACOSX_DEPLOYMENT_TARGET=$ENV{MACOSX_DEPLOYMENT_TARGET}"
-  "CMAKE_OSX_DEPLOYMENT_TARGET=$ENV{CMAKE_OSX_DEPLOYMENT_TARGET}"
-  "CC=$ENV{VCPKG_TARGET_CC}"
-  "CXX=$ENV{VCPKG_TARGET_CXX}"
-  "OBJC=$ENV{VCPKG_TARGET_OBJC}"
-  "OBJCXX=$ENV{VCPKG_TARGET_OBJCXX}"
-  "AR=$ENV{VCPKG_TARGET_AR}"
-  "RANLIB=$ENV{VCPKG_TARGET_RANLIB}"
-  "STRIP=$ENV{VCPKG_TARGET_STRIP}"
-  "NM=$ENV{VCPKG_TARGET_NM}"
-)
+# ExternalProject uses lists internally; protect literal semicolons until it
+# constructs the final command arguments.
+set(SUPERBUILD_LIST_SEPARATOR "__MPV_ENV_SEMICOLON__")
+function(encode_superbuild_environment output name value)
+  string(FIND "${value}" "${SUPERBUILD_LIST_SEPARATOR}" separator_index)
+  if(NOT separator_index EQUAL -1)
+    message(FATAL_ERROR "${name} contains the reserved environment list separator")
+  endif()
+  string(REPLACE ";" "${SUPERBUILD_LIST_SEPARATOR}" encoded_value "${value}")
+  set(${output} "${name}=${encoded_value}" PARENT_SCOPE)
+endfunction()
+
+set(SUPERBUILD_ENV)
+math(EXPR BUILD_ENVIRONMENT_LAST_INDEX "${BUILD_ENVIRONMENT_LENGTH} - 1")
+foreach(index RANGE ${BUILD_ENVIRONMENT_LAST_INDEX})
+  string(JSON environment_name MEMBER "${BUILD_ENVIRONMENT_JSON}" ${index})
+  string(JSON superbuild_source GET "${BUILD_ENVIRONMENT_JSON}" "${environment_name}" superbuild)
+  if(superbuild_source STREQUAL "none")
+    continue()
+  elseif(superbuild_source STREQUAL "environment")
+    set(environment_value "$ENV{${environment_name}}")
+  elseif(superbuild_source STREQUAL "cmake")
+    if(environment_name STREQUAL "PKG_CONFIG_LIBDIR")
+      set(environment_value "${FFMPEG_PREFIX}/lib/pkgconfig:${FFMPEG_PREFIX}/share/pkgconfig:${SOURCE_PREFIX}/lib/pkgconfig:${SOURCE_PREFIX}/share/pkgconfig:${VCPKG_TARGET_PREFIX}/lib/pkgconfig:${VCPKG_TARGET_PREFIX}/share/pkgconfig")
+    elseif(environment_name STREQUAL "PKG_CONFIG_PATH")
+      set(environment_value "")
+    else()
+      if(NOT DEFINED ${environment_name})
+        message(FATAL_ERROR "CMake build environment value is not defined: ${environment_name}")
+      endif()
+      set(environment_value "${${environment_name}}")
+    endif()
+  else()
+    message(FATAL_ERROR "invalid superbuild source for ${environment_name}: ${superbuild_source}")
+  endif()
+  string(JSON required_count LENGTH "${BUILD_ENVIRONMENT_JSON}" "${environment_name}" required)
+  if(required_count GREATER 0)
+    math(EXPR required_last_index "${required_count} - 1")
+    foreach(required_index RANGE ${required_last_index})
+      string(JSON required_stage GET "${BUILD_ENVIRONMENT_JSON}" "${environment_name}" required ${required_index})
+      if(required_stage STREQUAL "cmake")
+        string(JSON allow_empty GET "${BUILD_ENVIRONMENT_JSON}" "${environment_name}" allow_empty)
+        if(NOT allow_empty AND environment_value STREQUAL "")
+          message(FATAL_ERROR "${environment_name} is required")
+        endif()
+      endif()
+    endforeach()
+  endif()
+  encode_superbuild_environment(environment_assignment "${environment_name}" "${environment_value}")
+  list(APPEND SUPERBUILD_ENV "${environment_assignment}")
+endforeach()
+
+foreach(compiler IN ITEMS RUSTC MPV_REAL_RUSTC)
+  if(NOT EXISTS "$ENV{${compiler}}")
+    message(FATAL_ERROR "${compiler} does not exist: $ENV{${compiler}}")
+  endif()
+endforeach()
+
+# Apply vcpkg's isolated environment after the shared forwarding declarations.
+set(VCPKG_INSTALL_ENV "${SUPERBUILD_ENV}")
+foreach(environment_name IN ITEMS
+    CFLAGS CXXFLAGS OBJCFLAGS OBJCXXFLAGS CPPFLAGS LDFLAGS CPATH
+    LIBRARY_PATH DYLD_LIBRARY_PATH CMAKE_PREFIX_PATH
+    MACOSX_DEPLOYMENT_TARGET CMAKE_OSX_DEPLOYMENT_TARGET
+    CC CXX OBJC OBJCXX AR RANLIB STRIP NM)
+  if(environment_name MATCHES "^(CC|CXX|OBJC|OBJCXX|AR|RANLIB|STRIP|NM)$")
+    set(environment_value "$ENV{VCPKG_TARGET_${environment_name}}")
+  elseif(environment_name MATCHES "^(MACOSX_DEPLOYMENT_TARGET|CMAKE_OSX_DEPLOYMENT_TARGET)$")
+    set(environment_value "$ENV{${environment_name}}")
+  else()
+    set(environment_value "")
+  endif()
+  encode_superbuild_environment(environment_assignment "${environment_name}" "${environment_value}")
+  list(APPEND VCPKG_INSTALL_ENV "${environment_assignment}")
+endforeach()
 
 set(VCPKG_STATIC_PORTS
   aom
@@ -229,6 +187,7 @@ ExternalProject_Add(vcpkg-tool
 )
 
 ExternalProject_Add(vcpkg-static-ports
+  LIST_SEPARATOR "${SUPERBUILD_LIST_SEPARATOR}"
   PREFIX "${BUILD_ROOT}/superbuild/vcpkg-static-ports"
   DOWNLOAD_COMMAND ""
   UPDATE_COMMAND ""
@@ -242,6 +201,7 @@ ExternalProject_Add(vcpkg-static-ports
 )
 
 ExternalProject_Add(custom-static-deps
+  LIST_SEPARATOR "${SUPERBUILD_LIST_SEPARATOR}"
   PREFIX "${BUILD_ROOT}/superbuild/custom-static-deps"
   DOWNLOAD_COMMAND ""
   UPDATE_COMMAND ""
@@ -254,6 +214,7 @@ ExternalProject_Add(custom-static-deps
 )
 
 ExternalProject_Add(ffmpeg-static
+  LIST_SEPARATOR "${SUPERBUILD_LIST_SEPARATOR}"
   PREFIX "${BUILD_ROOT}/superbuild/ffmpeg-static"
   DOWNLOAD_COMMAND ""
   UPDATE_COMMAND ""
@@ -266,6 +227,7 @@ ExternalProject_Add(ffmpeg-static
 )
 
 ExternalProject_Add(ffmpeg-lgpl
+  LIST_SEPARATOR "${SUPERBUILD_LIST_SEPARATOR}"
   PREFIX "${BUILD_ROOT}/superbuild/ffmpeg-lgpl"
   DOWNLOAD_COMMAND ""
   UPDATE_COMMAND ""

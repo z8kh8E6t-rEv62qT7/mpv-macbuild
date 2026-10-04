@@ -2,6 +2,7 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/common.sh"
+init_ci_environment
 source "$CI_SCRIPT_ROOT/lib/ffmpeg-package-common.sh"
 
 usage() {

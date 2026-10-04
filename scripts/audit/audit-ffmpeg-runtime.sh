@@ -2,9 +2,10 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/common.sh"
+init_ci_environment
 source "$CI_SCRIPT_ROOT/lib/runtime-audit-common.sh"
 
-require_source_env
+require_build_environment source
 
 mkdir -p "$AUDIT_DIR"
 

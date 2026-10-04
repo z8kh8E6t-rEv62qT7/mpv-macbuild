@@ -79,8 +79,51 @@ Release behavior:
   `mpv-<mpv-ref>-ffmpeg-<ffmpeg-ref>-macos15-arm64`.
 - `maintain-nuget-cache` runs on `ubuntu-latest` after source deps succeeded
   and NuGet writes were enabled. It reports or deletes repository-linked
-  GitHub Packages NuGet packages whose `updated_at` timestamp is more than 30
-  days old, but does not block the release pipeline if maintenance fails.
+  GitHub Packages NuGet package versions whose `created_at` timestamp is more
+  than 30 days old, but does not block the release pipeline if maintenance fails.
+
+## Maintaining build scripts
+
+Executable entrypoints set their own strict Bash options. Loading a shared
+library only defines functions and locates other libraries; it does not validate
+the build environment, change dependency search paths, or create directories.
+CI entrypoints call `init_ci_environment` after loading `scripts/lib/common.sh`.
+The three source/FFmpeg superbuild entrypoints instead call
+`init_superbuild_environment`, which validates the supplied superbuild environment
+and sets its search paths and installation directories. Nested Bash commands
+must initialize the environment explicitly when they use CI paths.
+`scripts/lib/logging.sh` owns shared error handling and command logs;
+`cmake/scripts/superbuild-common.sh` owns build helpers and parallel batches.
+
+`scripts/lib/build-environment.json` declares each variable once:
+
+| Field | Meaning |
+| --- | --- |
+| `github_env` | Write the computed Shell value to `GITHUB_ENV`. |
+| `superbuild` | Forward from `environment`, from `cmake` values, or `none` (no explicit override; normal inheritance still applies). |
+| `required` | Require the variable in the `source`, `superbuild`, or `cmake` validation stages. |
+| `allow_empty` | Permit a required variable to be set to an empty string, as with `INCLUDE_PATH`. |
+
+`build_environment.py` reads and validates the declaration for Shell callers;
+CMake reads it using native JSON support. Actual paths and flags remain computed
+by `prepare-macos.sh`, and secrets remain in the process environment. The runner
+environment writer preserves literal values and rejects multiline values rather
+than interpreting them as additional assignments. CMake preserves spaces and
+literal semicolons when forwarding values through ExternalProject.
+vcpkg's cleared flags and compiler overrides are applied after shared forwarding;
+LGPL's restricted search paths remain explicit in its own build script.
+When adding a build variable, update its declaration and the Shell or CMake code
+that computes its value. The declaration participates in both the vcpkg cache key
+and its matching restore key.
+
+`cmake/scripts/build-custom-static-deps.sh` loads five modules from
+`cmake/scripts/deps/` and schedules the existing dependency batches:
+`lua.sh` owns LuaJIT/LuaSocket, `rust.sh` owns libdovi/rav1e and Rust symbol
+normalization, `graphics.sh` owns Vulkan/MoltenVK/libplacebo, `media.sh` owns the
+remaining media libraries including frei0r, and `vapoursynth.sh` owns VapourSynth.
+Keep package-specific fixes with their owning module; module loading must not
+start a build. Update `VULKAN_SDK_TAG` only in `scripts/lib/ci_matrix.py`; its
+pkg-config/audit version is derived there.
 
 ## Build model
 
@@ -208,10 +251,11 @@ Custom source-built and overlay-managed components include:
   overlapping Rust runtime symbols so FFmpeg can link libplacebo/libdovi,
   `--enable-librav1e`, and `--enable-librsvg` together without hiding any
   public C API.
-- `Vulkan-Headers` from `vulkan-sdk-1.4.363.0`, installed into the source
-  prefix with the matching CMake package config and Vulkan registry files.
-- `Vulkan-Loader` from `vulkan-sdk-1.4.363.0`, built as the bundled Vulkan
-  loader runtime for macOS against the source-built matching headers.
+- `Vulkan-Headers` from `VULKAN_SDK_TAG` in `scripts/lib/ci_matrix.py`,
+  installed into the source prefix with the matching CMake package config and
+  Vulkan registry files. The build and audit read this same version declaration.
+- `Vulkan-Loader` from that same SDK tag, built as the bundled Vulkan loader
+  runtime for macOS against the source-built matching headers.
 - `MoltenVK` from HEAD, used both as a source-built static input and bundled
   runtime component.
 - `libass` remains dyphire-aligned through a repo-local vcpkg overlay that
@@ -225,6 +269,10 @@ Custom source-built and overlay-managed components include:
 - `uavs3d` HEAD with 10-bit enabled.
 - `libzvbi`, `zimg`, `libbs2b`, `libcaca`, `libcdio`, `libcdio-paranoia`,
   `rav1e`, `libvidstab`, `kvazaar`, `frei0r`, and VapourSynth.
+  Before configuring VapourSynth with `--wrap-mode=nodownload`, the build
+  explicitly downloads its `glslang` subproject using the upstream `glslang.wrap`
+  revision and Meson overlay. This embedded dependency is separate from vcpkg's
+  glslang installation.
   `libcdio-paranoia` is patched to build the libraries and pkg-config files
   only; the unrelated `cd-paranoia` CLI is not part of the FFmpeg dependency
   surface.

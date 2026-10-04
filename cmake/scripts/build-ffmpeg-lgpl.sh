@@ -2,6 +2,7 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/superbuild-common.sh"
+init_superbuild_environment
 require_var FFMPEG_REF
 
 src="$SOURCE_ROOT/ffmpeg-lgpl"

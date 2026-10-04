@@ -2,8 +2,9 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/common.sh"
+init_ci_environment
 
-require_source_env
+require_build_environment source
 
 mpv_ffmpeg_pkg_config_packages=(
   libavcodec

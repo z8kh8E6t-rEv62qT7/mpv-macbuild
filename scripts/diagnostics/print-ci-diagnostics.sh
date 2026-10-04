@@ -2,32 +2,14 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/common.sh"
-
-print_group() {
-  local title="$1"
-  if declare -F ci_group >/dev/null; then
-    ci_group "$title"
-  elif [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
-    echo "::group::$title"
-  else
-    echo "===== $title ====="
-  fi
-}
-
-end_group() {
-  if declare -F ci_endgroup >/dev/null; then
-    ci_endgroup
-  elif [[ "${GITHUB_ACTIONS:-}" == "true" ]]; then
-    echo "::endgroup::"
-  fi
-}
+init_ci_environment
 
 print_file() {
   local path="$1"
   [[ -f "$path" ]] || return 0
-  print_group "$path"
+  ci_group "$path"
   cat "$path"
-  end_group
+  ci_endgroup
 }
 
 print_matching_files() {
@@ -36,7 +18,7 @@ print_matching_files() {
   local found=0
   local pattern path
 
-  print_group "$title"
+  ci_group "$title"
   for pattern in "$@"; do
     for path in $pattern; do
       [[ -f "$path" ]] || continue
@@ -49,15 +31,15 @@ print_matching_files() {
   if [[ "$found" == 0 ]]; then
     echo "No matching files."
   fi
-  end_group
+  ci_endgroup
 }
 
 print_command() {
   local title="$1"
   shift
-  print_group "$title"
+  ci_group "$title"
   "$@" || true
-  end_group
+  ci_endgroup
 }
 
 print_selected_environment() {
@@ -125,11 +107,11 @@ print_selected_environment() {
   )
   local name
 
-  print_group "CI diagnostics: selected environment"
+  ci_group "CI diagnostics: selected environment"
   for name in "${names[@]}"; do
     printf '%s=%s\n' "$name" "${!name:-}"
   done
-  end_group
+  ci_endgroup
 }
 
 build_root="${BUILD_ROOT:-${RUNNER_TEMP:+$RUNNER_TEMP/build}}"

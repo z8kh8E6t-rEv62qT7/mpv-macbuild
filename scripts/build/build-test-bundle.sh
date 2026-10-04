@@ -2,8 +2,9 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/common.sh"
+init_ci_environment
 
-require_source_env
+require_build_environment source
 
 phase="${1:-all}"
 cd "$MPV_DIR"

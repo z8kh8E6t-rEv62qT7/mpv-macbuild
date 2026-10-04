@@ -1,9 +1,4 @@
 #!/usr/bin/env bash
-set -euo pipefail
-
-if [[ -z "${CI_SCRIPT_DIR:-}" ]]; then
-  source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
-fi
 
 runtime_audit_allowed_runtime_patterns() {
   PYTHONPATH="$CI_SCRIPT_ROOT/lib" python3 -c \

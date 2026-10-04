@@ -126,9 +126,9 @@ jobs:
         uses: actions/cache/restore@v5
         with:
           path: ${{ runner.temp }}/vcpkg-binary-cache
-          key: vcpkg-${{ runner.os }}-${{ runner.arch }}-macos15-static-m4-${{ hashFiles('builder/cmake/CMakeLists.txt', 'builder/cmake/ports-overlay/**', 'builder/cmake/triplets/**', 'builder/cmake/toolchains/**', 'builder/scripts/build/prepare-macos.sh') }}-${{ github.run_id }}-${{ github.run_attempt }}
+          key: vcpkg-${{ runner.os }}-${{ runner.arch }}-macos15-static-m4-${{ hashFiles('builder/cmake/CMakeLists.txt', 'builder/cmake/ports-overlay/**', 'builder/cmake/triplets/**', 'builder/cmake/toolchains/**', 'builder/scripts/build/prepare-macos.sh', 'builder/scripts/lib/build-environment.json') }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            vcpkg-${{ runner.os }}-${{ runner.arch }}-macos15-static-m4-${{ hashFiles('builder/cmake/CMakeLists.txt', 'builder/cmake/ports-overlay/**', 'builder/cmake/triplets/**', 'builder/cmake/toolchains/**', 'builder/scripts/build/prepare-macos.sh') }}-
+            vcpkg-${{ runner.os }}-${{ runner.arch }}-macos15-static-m4-${{ hashFiles('builder/cmake/CMakeLists.txt', 'builder/cmake/ports-overlay/**', 'builder/cmake/triplets/**', 'builder/cmake/toolchains/**', 'builder/scripts/build/prepare-macos.sh', 'builder/scripts/lib/build-environment.json') }}-
             vcpkg-${{ runner.os }}-${{ runner.arch }}-macos15-static-m4-
 
       - name: Build source

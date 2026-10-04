@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/scripts/lib/logging.sh"
+
 : "${VCPKG_ROOT:?VCPKG_ROOT is not set}"
 : "${VCPKG_INSTALLED_DIR:?VCPKG_INSTALLED_DIR is not set}"
 : "${VCPKG_BINARY_CACHE:?VCPKG_BINARY_CACHE is not set}"
@@ -41,11 +43,6 @@ EOF
     -ConfigFile "$NUGET_CONFIG_PATH"
 
   "$mono_bin" "$nuget_exe" sources List -ConfigFile "$NUGET_CONFIG_PATH"
-}
-
-die() {
-  echo "error: $*" >&2
-  exit 1
 }
 
 configure_vcpkg_binary_sources() {

@@ -2,6 +2,7 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/lib/common.sh"
+init_ci_environment
 
 ffmpeg_bin="${1:-}"
 report_stem="${2:-ffmpeg-symbol-diagnostics}"
