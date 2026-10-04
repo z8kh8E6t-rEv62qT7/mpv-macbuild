@@ -307,6 +307,11 @@ apply cleanly and otherwise relies on equivalent upstream behavior:
   `close` are renamed so ld64.lld/Thin-LTO cannot bind POSIX `close(fd)` to a
   local static callback. This keeps optimization, LTO, linker, and feature
   settings unchanged.
+- libvmaf/libc++ compatibility: rename libsvm's global `swap` helper and its
+  calls to `svm_swap` so argument-dependent lookup in libc++ cannot select it.
+- OpenAL Soft/libc++ compatibility: use a span for effect-slot filling and a
+  lambda returning a reference for cluster dereferencing, avoiding deduction
+  of a pointer to libc++'s templated `unique_ptr::operator*`.
 - FFmpeg extensions: `libfdk-aac`, `frei0r`, `libvidstab`, `libgme`,
   `chromaprint`, `libcaca`, `libcdio`, `libopenjpeg`, `libopenh264`,
   `libkvazaar`, `libsnappy`, `librtmp`, `libtheora`, `libvmaf`, `librsvg`,

@@ -8,6 +8,7 @@ vcpkg_from_github(
         no-tools.patch
         android-off_t.patch
         no-internal-close-symbols.patch
+        no-global-swap.patch
 )
 
 vcpkg_find_acquire_program(NASM)

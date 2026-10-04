@@ -1,0 +1,147 @@
+diff --git a/libvmaf/src/svm.cpp b/libvmaf/src/svm.cpp
+--- a/libvmaf/src/svm.cpp
++++ b/libvmaf/src/svm.cpp
+@@ -21,7 +21,7 @@
+ #ifndef max
+ template <class T> static inline T max(T x,T y) { return (x>y)?x:y; }
+ #endif
+-template <class T> static inline void swap(T& x, T& y) { T t=x; x=y; y=t; }
++template <class T> static inline void svm_swap(T& x, T& y) { T t=x; x=y; y=t; }
+ template <class S, class T> static inline void clone(T*& dst, S* src, int n)
+ {
+ 	dst = new T[n];
+@@ -149,7 +149,7 @@
+ 		// allocate new space
+ 		h->data = (Qfloat *)realloc(h->data,sizeof(Qfloat)*len);
+ 		size -= more;
+-		swap(h->len,len);
++		svm_swap(h->len,len);
+ 	}
+
+ 	lru_insert(h);
+@@ -163,18 +163,18 @@
+
+ 	if(head[i].len) lru_delete(&head[i]);
+ 	if(head[j].len) lru_delete(&head[j]);
+-	swap(head[i].data,head[j].data);
+-	swap(head[i].len,head[j].len);
++	svm_swap(head[i].data,head[j].data);
++	svm_swap(head[i].len,head[j].len);
+ 	if(head[i].len) lru_insert(&head[i]);
+ 	if(head[j].len) lru_insert(&head[j]);
+
+-	if(i>j) swap(i,j);
++	if(i>j) svm_swap(i,j);
+ 	for(head_t *h = lru_head.next; h!=&lru_head; h=h->next)
+ 	{
+ 		if(h->len > i)
+ 		{
+ 			if(h->len > j)
+-				swap(h->data[i],h->data[j]);
++				svm_swap(h->data[i],h->data[j]);
+ 			else
+ 			{
+ 				// give up
+@@ -214,8 +214,8 @@
+ 	virtual double *get_QD() const = 0;
+ 	virtual void swap_index(int i, int j) const	// no so const...
+ 	{
+-		swap(x[i],x[j]);
+-		if(x_square) swap(x_square[i],x_square[j]);
++		svm_swap(x[i],x[j]);
++		if(x_square) svm_swap(x_square[i],x_square[j]);
+ 	}
+ protected:
+
+@@ -454,13 +454,13 @@
+ void Solver::swap_index(int i, int j)
+ {
+ 	Q->swap_index(i,j);
+-	swap(y[i],y[j]);
+-	swap(G[i],G[j]);
+-	swap(alpha_status[i],alpha_status[j]);
+-	swap(alpha[i],alpha[j]);
+-	swap(p[i],p[j]);
+-	swap(active_set[i],active_set[j]);
+-	swap(G_bar[i],G_bar[j]);
++	svm_swap(y[i],y[j]);
++	svm_swap(G[i],G[j]);
++	svm_swap(alpha_status[i],alpha_status[j]);
++	svm_swap(alpha[i],alpha[j]);
++	svm_swap(p[i],p[j]);
++	svm_swap(active_set[i],active_set[j]);
++	svm_swap(G_bar[i],G_bar[j]);
+ }
+
+ void Solver::reconstruct_gradient()
+@@ -1301,8 +1301,8 @@
+ 	{
+ 		cache->swap_index(i,j);
+ 		Kernel::swap_index(i,j);
+-		swap(y[i],y[j]);
+-		swap(QD[i],QD[j]);
++		svm_swap(y[i],y[j]);
++		svm_swap(QD[i],QD[j]);
+ 	}
+
+ 	~SVC_Q()
+@@ -1350,7 +1350,7 @@
+ 	{
+ 		cache->swap_index(i,j);
+ 		Kernel::swap_index(i,j);
+-		swap(QD[i],QD[j]);
++		svm_swap(QD[i],QD[j]);
+ 	}
+
+ 	~ONE_CLASS_Q()
+@@ -1390,9 +1390,9 @@
+
+ 	void swap_index(int i, int j) const
+ 	{
+-		swap(sign[i],sign[j]);
+-		swap(index[i],index[j]);
+-		swap(QD[i],QD[j]);
++		svm_swap(sign[i],sign[j]);
++		svm_swap(index[i],index[j]);
++		svm_swap(QD[i],QD[j]);
+ 	}
+
+ 	Qfloat *get_Q(int i, int len) const
+@@ -1908,7 +1908,7 @@
+ 	for(i=0;i<prob->l;i++)
+ 	{
+ 		int j = i+rand()%(prob->l-i);
+-		swap(perm[i],perm[j]);
++		svm_swap(perm[i],perm[j]);
+ 	}
+ 	for(i=0;i<nr_fold;i++)
+ 	{
+@@ -2059,8 +2059,8 @@
+ 	//
+ 	if (nr_class == 2 && label[0] == -1 && label[1] == 1)
+ 	{
+-		swap(label[0],label[1]);
+-		swap(count[0],count[1]);
++		svm_swap(label[0],label[1]);
++		svm_swap(count[0],count[1]);
+ 		for(i=0;i<l;i++)
+ 		{
+ 			if(data_label[i] == 0)
+@@ -2373,7 +2373,7 @@
+ 			for(i=0;i<count[c];i++)
+ 			{
+ 				int j = i+rand()%(count[c]-i);
+-				swap(index[start[c]+j],index[start[c]+i]);
++				svm_swap(index[start[c]+j],index[start[c]+i]);
+ 			}
+ 		for(i=0;i<nr_fold;i++)
+ 		{
+@@ -2410,7 +2410,7 @@
+ 		for(i=0;i<l;i++)
+ 		{
+ 			int j = i+rand()%(l-i);
+-			swap(perm[i],perm[j]);
++			svm_swap(perm[i],perm[j]);
+ 		}
+ 		for(i=0;i<=nr_fold;i++)
+ 			fold_start[i]=i*l/nr_fold;

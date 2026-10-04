@@ -11,3 +11,16 @@ index 77cfa5793..71fe17715 100644
 
      auto oldarray = context->mActiveAuxSlots.exchange(std::move(newarray),
          std::memory_order_acq_rel);
+diff --git a/alc/alc.cpp b/alc/alc.cpp
+--- a/alc/alc.cpp
++++ b/alc/alc.cpp
+@@ -1781,7 +1781,8 @@
+          * configuration in aluInitEffectPanning.
+          */
+         std::ranges::for_each(context->mEffectSlotClusters
+-            | std::views::transform(&ContextBase::EffectSlotCluster::operator*)
++            | std::views::transform([](ContextBase::EffectSlotCluster const &cluster) -> auto&
++            { return *cluster; })
+             | std::views::join, [](EffectSlotBase &slot)
+         {
+             slot.mWetBuffer.clear();
