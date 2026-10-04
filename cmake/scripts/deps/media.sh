@@ -101,7 +101,8 @@ build_libcdio() {
       --without-cdda-player \
       --without-iso-info \
       --without-iso-read \
-      --without-cd-read
+      --without-cd-read \
+      --disable-maintainer-mode
   )
   remove_dynamic_artifacts
   pkg-config --exists libcdio
@@ -116,7 +117,8 @@ build_libcdio() {
     export LIBS="${LIBS:-} $iconv_libs"
     export am_cv_func_iconv=yes
     export am_cv_func_iconv_works=yes
-    configure_make_install_static "$SOURCE_ROOT/libcdio-paranoia"
+    configure_make_install_static "$SOURCE_ROOT/libcdio-paranoia" \
+      --disable-maintainer-mode
   )
   remove_dynamic_artifacts
   pkg-config --exists libcdio_cdda

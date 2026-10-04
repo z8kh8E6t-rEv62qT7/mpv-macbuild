@@ -100,11 +100,12 @@ clone_or_update() {
 
 run_autogen_if_present() {
   local src="$1"
+  shift
 
   if [[ -x "$src/autogen.sh" ]]; then
-    (cd "$src" && ./autogen.sh)
+    (cd "$src" && ./autogen.sh "$@")
   elif [[ -x "$src/bootstrap" ]]; then
-    (cd "$src" && ./bootstrap)
+    (cd "$src" && ./bootstrap "$@")
   elif [[ -f "$src/configure.ac" || -f "$src/configure.in" ]]; then
     (cd "$src" && autoreconf -fi)
   fi
@@ -114,7 +115,7 @@ configure_make_install_static() {
   local src="$1"
   shift
 
-  run_autogen_if_present "$src"
+  run_autogen_if_present "$src" "$@"
   (
     cd "$src"
     ./configure \
