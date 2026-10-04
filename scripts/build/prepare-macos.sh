@@ -51,11 +51,14 @@ brew_formulae=(
   rust
 )
 
-# Some hosted macOS images leave the retired OpenSSL 1.1 formula linked.  The
-# current Python toolchain installs OpenSSL 3 and Homebrew refuses to replace
-# that conflicting executable symlink during `brew install`.
-if brew list openssl@1.1 &> /dev/null; then
-  brew unlink openssl@1.1
+# Hosted macOS images manually link this executable through opt, so
+# `brew unlink openssl@1.1` can leave it blocking OpenSSL 3 installation.
+if [[ -L "$brew_prefix/bin/openssl" ]]; then
+  openssl_link_target="$(readlink "$brew_prefix/bin/openssl")"
+  if [[ "$openssl_link_target" == "$brew_prefix/opt/openssl@1.1/bin/openssl" ]]; then
+    echo "Removing legacy OpenSSL executable symlink: $brew_prefix/bin/openssl -> $openssl_link_target"
+    rm "$brew_prefix/bin/openssl"
+  fi
 fi
 
 brew install -q "${brew_formulae[@]}"
