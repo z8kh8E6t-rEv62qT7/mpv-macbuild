@@ -51,6 +51,13 @@ brew_formulae=(
   rust
 )
 
+# Some hosted macOS images leave the retired OpenSSL 1.1 formula linked.  The
+# current Python toolchain installs OpenSSL 3 and Homebrew refuses to replace
+# that conflicting executable symlink during `brew install`.
+if brew list openssl@1.1 &> /dev/null; then
+  brew unlink openssl@1.1
+fi
+
 brew install -q "${brew_formulae[@]}"
 
 moltenvk_icd_json="$brew_prefix/etc/vulkan/icd.d/MoltenVK_icd.json"
