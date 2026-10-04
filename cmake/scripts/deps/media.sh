@@ -86,7 +86,7 @@ build_libcdio() {
   local iconv_cflags
   local iconv_libs
 
-  clone_or_update https://git.savannah.gnu.org/git/libcdio.git "$SOURCE_ROOT/libcdio"
+  clone_or_update https://github.com/libcdio/libcdio-C.git "$SOURCE_ROOT/libcdio"
   iconv_cflags="$(pkg-config --cflags libiconv 2>/dev/null || pkg-config --cflags iconv 2>/dev/null || true)"
   iconv_libs="$(pkg-config --libs --static libiconv 2>/dev/null || pkg-config --libs --static iconv 2>/dev/null || printf '%s' '-liconv')"
   (
