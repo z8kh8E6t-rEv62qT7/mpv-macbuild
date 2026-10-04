@@ -25,6 +25,3 @@ run_logged "cmake-configure-source-superbuild" \
 
 run_logged "cmake-build-source-static-deps" \
   cmake --build "$superbuild_dir" --target source-static-deps --verbose
-
-run_logged "cmake-build-lgpl-optional-deps" \
-  cmake --build "$superbuild_dir" --target source-lgpl-optional-deps --verbose

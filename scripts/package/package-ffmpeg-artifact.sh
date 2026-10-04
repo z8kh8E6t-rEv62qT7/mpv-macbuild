@@ -15,10 +15,10 @@ mkdir -p "$output_dir"
 gpl_name="ffmpeg-gplv3-nonfree-macos15-arm64"
 lgpl_name="ffmpeg-lgpl-macos15-arm64"
 
-stage_ffmpeg_shared_prefix "$FFMPEG_PREFIX" "$stage_dir/ffmpeg-gplv3-nonfree"
-validate_ffmpeg_shared_stage "$stage_dir/ffmpeg-gplv3-nonfree" ffmpeg ffprobe ffplay
-stage_ffmpeg_shared_prefix "$FFMPEG_LGPL_PREFIX" "$stage_dir/ffmpeg-lgpl"
-validate_ffmpeg_shared_stage "$stage_dir/ffmpeg-lgpl" ffmpeg
+stage_ffmpeg_shared_prefix "$FFMPEG_PREFIX" "$stage_dir/ffmpeg-gplv3-nonfree" gpl
+validate_ffmpeg_shared_stage "$stage_dir/ffmpeg-gplv3-nonfree" gpl
+stage_ffmpeg_shared_prefix "$FFMPEG_LGPL_PREFIX" "$stage_dir/ffmpeg-lgpl" lgpl
+validate_ffmpeg_shared_stage "$stage_dir/ffmpeg-lgpl" lgpl
 mkdir -p \
   "$stage_dir/ffmpeg-gplv3-nonfree/share/licenses/ffmpeg" \
   "$stage_dir/ffmpeg-lgpl/share/licenses/ffmpeg"
@@ -30,6 +30,13 @@ git -C "$SOURCE_ROOT/ffmpeg" rev-parse HEAD > \
   "$stage_dir/ffmpeg-gplv3-nonfree/share/ffmpeg-build-commit.txt"
 git -C "$SOURCE_ROOT/ffmpeg-lgpl" rev-parse HEAD > \
   "$stage_dir/ffmpeg-lgpl/share/ffmpeg-build-commit.txt"
+for dependency in zlib dav1d liblzma; do
+  mkdir -p "$stage_dir/ffmpeg-lgpl/share/licenses/$dependency"
+  cp "$VCPKG_TARGET_PREFIX/share/$dependency/copyright" \
+    "$stage_dir/ffmpeg-lgpl/share/licenses/$dependency/"
+done
+cp "$BUILD_ROOT/ffmpeg-lgpl/config.h" "$stage_dir/ffmpeg-lgpl/share/ffmpeg-config.h"
+cp "$BUILD_ROOT/ffmpeg-lgpl/config_components.h" "$stage_dir/ffmpeg-lgpl/share/ffmpeg-config-components.h"
 remove_macos_metadata "$stage_dir"
 
 run_logged "package-ffmpeg-gpl-artifact" \

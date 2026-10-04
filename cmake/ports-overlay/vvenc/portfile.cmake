@@ -2,26 +2,27 @@ vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO fraunhoferhhi/vvenc
     REF v${VERSION}
-    SHA512 bf2ac5fc3859cb3303ef4fa4fcdbe00a6db617e3c2e76c6d658071a7650e5966fa1522ccb2feca8c770cea3ea25d2b573dbd0c72f4c0d71be61ba7dd1ab9440b
+    SHA512 2b73f10a32da28bdc51913b5ecc229fe56ef0afe0d66a9bb1e76a9044dc04427e55587b6b9a0ca8d315220d4362b663e038a68a89e5b38ecf3ed2e7b5dcb0c58
     HEAD_REF master
     PATCHES
-        fix-cmakelists.patch
         fix-dependencies.patch
-        no-werror.patch
         vvenc-0001-explicitly-instantiate-loopfilter-deblockarea.patch
 )
 
 vcpkg_check_features(OUT_FEATURE_OPTIONS FEATURE_OPTIONS
     FEATURES
-        tools  BUILD_TOOLS
+        tools VVENC_INSTALL_FULLFEATURE_APP
+    INVERTED_FEATURES
+        tools VVENC_LIBRARY_ONLY
 )
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
     OPTIONS ${FEATURE_OPTIONS}
-        -DBUILD_TESTING=OFF
         -DCCACHE_FOUND=OFF
         -DVVENC_ENABLE_X86_SIMD=OFF
+        -DVVENC_ENABLE_WERROR=OFF
+        -DVVENC_ENABLE_THIRDPARTY_JSON=SYSTEM
 )
 
 vcpkg_cmake_install()
@@ -29,22 +30,22 @@ vcpkg_cmake_config_fixup(CONFIG_PATH lib/cmake/vvenc)
 
 vcpkg_copy_pdbs()
 vcpkg_fixup_pkgconfig()
-foreach(pkgconfig_file IN ITEMS
-    "${CURRENT_PACKAGES_DIR}/lib/pkgconfig/libvvenc.pc"
-    "${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/libvvenc.pc"
-)
-    if(NOT EXISTS "${pkgconfig_file}")
-        message(FATAL_ERROR "Expected vvenc pkg-config file is missing: ${pkgconfig_file}")
+# Upstream now derives the C++ runtime flags from the compiler. Do not require
+# or rewrite the old hardcoded -lstdc++; validate the macOS result instead.
+if(VCPKG_TARGET_IS_OSX)
+    set(pkgconfig_files "${CURRENT_PACKAGES_DIR}/lib/pkgconfig/libvvenc.pc")
+    if(NOT VCPKG_BUILD_TYPE)
+        list(APPEND pkgconfig_files "${CURRENT_PACKAGES_DIR}/debug/lib/pkgconfig/libvvenc.pc")
     endif()
-    file(READ "${pkgconfig_file}" pkgconfig_contents)
-    string(FIND "${pkgconfig_contents}" "-lstdc++" stdlib_position)
-    if(stdlib_position EQUAL -1)
-        message(FATAL_ERROR "Expected vvenc pkg-config file to reference libstdc++: ${pkgconfig_file}")
-    endif()
-    vcpkg_replace_string("${pkgconfig_file}" "-lstdc++" "-lc++")
-endforeach()
+    foreach(pkgconfig_file IN LISTS pkgconfig_files)
+        file(READ "${pkgconfig_file}" pkgconfig_contents)
+        if(pkgconfig_contents MATCHES "-lstdc[+][+]")
+            message(FATAL_ERROR "vvenc must not advertise libstdc++ on macOS: ${pkgconfig_file}")
+        endif()
+    endforeach()
+endif()
 
-if(BUILD_TOOLS)
+if("tools" IN_LIST FEATURES)
     vcpkg_copy_tools(TOOL_NAMES vvencFFapp vvencapp AUTO_CLEAN)
 endif()
 

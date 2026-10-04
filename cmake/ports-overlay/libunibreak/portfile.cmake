@@ -7,7 +7,7 @@ vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO adah1972/libunibreak
     REF "libunibreak_${MAJOR}_${MINOR}"
-    SHA512 50271605be1645698df7ef5b97ae6bbc75b7228ea1aa26a261f33afd8e264e63c37c190d8d7f3a93f87d60b627a68ec90f2f7f55ef08486e5a8bd667c4a372f6
+    SHA512 5813b54458fd442def3d8b831147dada549f88f9a7831e72f4b608571d78c057fa05732d3b0d69dae365adf346825a89a1d7fdf74fa3b5465495019648820fdf
     HEAD_REF master
     PATCHES
         fix_export.patch

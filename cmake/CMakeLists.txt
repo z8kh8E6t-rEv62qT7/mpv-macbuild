@@ -41,7 +41,7 @@ if(NOT DEFINED ENV{MPV_RUSTC_DEPLOYMENT_TARGET} OR "$ENV{MPV_RUSTC_DEPLOYMENT_TA
 endif()
 
 set(VCPKG_ROOT "${SOURCE_ROOT}/vcpkg")
-set(VCPKG_REF "56bb2411609227288b70117ead2c47585ba07713")
+set(VCPKG_REF "5dd2e1600d049b498ff9fb9fe15997533ae0c804")
 set(VCPKG_INSTALLED_DIR "${SOURCE_PREFIX}/vcpkg-installed")
 set(VCPKG_TARGET_PREFIX "${VCPKG_INSTALLED_DIR}/arm64-osx-static")
 set(VCPKG_OVERLAY_PORTS_DIR "${CMAKE_CURRENT_LIST_DIR}/ports-overlay")
@@ -215,18 +215,6 @@ set(VCPKG_STATIC_PORTS
   zstd
 )
 
-set(VCPKG_LGPL_OPTIONAL_PORTS
-  celt
-  codec2
-  gsm
-  lc3
-  lcevc-dec
-  svt-jpeg-xs
-  uavs3d
-  xevd
-  zvbi
-)
-
 ExternalProject_Add(vcpkg-tool
   PREFIX "${BUILD_ROOT}/superbuild/vcpkg-tool"
   GIT_REPOSITORY https://github.com/microsoft/vcpkg.git
@@ -265,19 +253,6 @@ ExternalProject_Add(custom-static-deps
   DEPENDS vcpkg-static-ports
 )
 
-ExternalProject_Add(vcpkg-lgpl-optional-ports
-  PREFIX "${BUILD_ROOT}/superbuild/vcpkg-lgpl-optional-ports"
-  DOWNLOAD_COMMAND ""
-  UPDATE_COMMAND ""
-  CONFIGURE_COMMAND ""
-  BUILD_COMMAND
-    "${CMAKE_COMMAND}" -E env ${VCPKG_INSTALL_ENV}
-    "${BASH_EXECUTABLE}" "${CMAKE_CURRENT_LIST_DIR}/scripts/run-vcpkg-install-optional.sh"
-      ${VCPKG_LGPL_OPTIONAL_PORTS}
-  INSTALL_COMMAND ""
-  DEPENDS vcpkg-static-ports
-)
-
 ExternalProject_Add(ffmpeg-static
   PREFIX "${BUILD_ROOT}/superbuild/ffmpeg-static"
   DOWNLOAD_COMMAND ""
@@ -299,8 +274,7 @@ ExternalProject_Add(ffmpeg-lgpl
     "${CMAKE_COMMAND}" -E env ${SUPERBUILD_ENV}
     "${BASH_EXECUTABLE}" "${CMAKE_CURRENT_LIST_DIR}/scripts/build-ffmpeg-lgpl.sh"
   INSTALL_COMMAND ""
-  DEPENDS vcpkg-lgpl-optional-ports
+  DEPENDS vcpkg-static-ports
 )
 
 add_custom_target(source-static-deps DEPENDS custom-static-deps)
-add_custom_target(source-lgpl-optional-deps DEPENDS vcpkg-lgpl-optional-ports)

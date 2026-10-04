@@ -313,7 +313,7 @@ run_fate_profile \
   "$jobs"
 run_fate_profile \
   "lgpl" \
-  "$SOURCE_ROOT/ffmpeg-lgpl" \
+  "$BUILD_ROOT/ffmpeg-lgpl" \
   "$FFMPEG_LGPL_PREFIX" \
   "false" \
   "$jobs"

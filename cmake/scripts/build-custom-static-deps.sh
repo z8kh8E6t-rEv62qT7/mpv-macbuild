@@ -3,7 +3,7 @@ set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/superbuild-common.sh"
 
-VULKAN_SDK_TAG="vulkan-sdk-1.4.350.0"
+VULKAN_SDK_TAG="vulkan-sdk-1.4.363.0"
 VULKAN_SDK_VERSION="${VULKAN_SDK_TAG#vulkan-sdk-}"
 VULKAN_SDK_VERSION="${VULKAN_SDK_VERSION%.0}"
 

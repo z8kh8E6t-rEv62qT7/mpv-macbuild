@@ -4,12 +4,11 @@ vcpkg_download_distfile(SOURCE_ARCHIVE
         "https://download.gnome.org/sources/pango/${VERSION_MAJOR_MINOR}/pango-${VERSION}.tar.xz"
         "https://www.mirrorservice.org/sites/ftp.gnome.org/pub/GNOME/sources/${PORT}/${VERSION_MAJOR_MINOR}/${PORT}-${VERSION}.tar.xz"
     FILENAME "pango-${VERSION}.tar.xz"
-    SHA512 ccfcec11f0beb0487d9225be227e7f31d03229ed1e0dc3309e2647ed5fa953cf036ad352232429f5604f97d20812074ff145ea622110afa4df3a410ebba4d26a
+    SHA512 19c88d07c547312bde647cb5d43c300d1750c5b21904c4c066c0ddba30fcfddc9cad463c40bddbe1df228eb33475ff5396ce9921df5347e8187fe3ede8d075a8
 )
 vcpkg_extract_source_archive(SOURCE_PATH
     ARCHIVE "${SOURCE_ARCHIVE}"
     PATCHES
-        relax-gi-requirement.diff
         apple-coretext-pointer-cast.patch
 )
 

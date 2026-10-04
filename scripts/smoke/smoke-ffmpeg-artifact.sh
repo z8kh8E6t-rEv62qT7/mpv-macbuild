@@ -18,15 +18,16 @@ expected_tools=()
 
 case "$profile:$expected_root" in
   gpl:ffmpeg-gplv3-nonfree)
-    expected_tools=(ffmpeg ffprobe ffplay)
     ;;
   lgpl:ffmpeg-lgpl)
-    expected_tools=(ffmpeg)
     ;;
   *)
     die "unsupported FFmpeg smoke profile/root combination: $profile:$expected_root"
     ;;
 esac
+ffmpeg_tools=()
+ffmpeg_package_profile "$profile"
+expected_tools=("${ffmpeg_tools[@]}")
 
 [[ -f "$archive_path" ]] || die "missing FFmpeg artifact archive: $archive_path"
 
@@ -65,7 +66,7 @@ validate_archive_layout() {
 
   tar -xJf "$archive_path" -C "$extract_dir"
   [[ -d "$artifact_root" ]] || die "archive did not extract expected root: $expected_root"
-  validate_ffmpeg_shared_stage "$artifact_root" "${expected_tools[@]}"
+  validate_ffmpeg_shared_stage "$artifact_root" "$profile"
 }
 
 cleanup() {
@@ -389,31 +390,45 @@ collect_symbol_diagnostics() {
 write_runtime_report
 init_summary
 
-audio_flac="$smoke_dir/audio.flac"
-audio_wav="$smoke_dir/audio.wav"
-video_mkv="$smoke_dir/video.mkv"
-video_ffv1_mkv="$smoke_dir/video-ffv1.mkv"
-image_jxl="$smoke_dir/image.jxl"
-image_svg="$smoke_dir/image.svg"
-testsrc_hd="testsrc=duration=2:size=1280x720"
-testsrc_x264_boundary="testsrc=duration=2:size=128x128:rate=25"
-testsrc_x264_yuv420p="testsrc=duration=2:size=128x128:rate=25,format=yuv420p"
+if [[ "$profile" == "gpl" ]]; then
+  audio_flac="$smoke_dir/audio.flac"
+  audio_wav="$smoke_dir/audio.wav"
+  video_mkv="$smoke_dir/video.mkv"
+  video_ffv1_mkv="$smoke_dir/video-ffv1.mkv"
+  image_jxl="$smoke_dir/image.jxl"
+  image_svg="$smoke_dir/image.svg"
+  testsrc_hd="testsrc=duration=2:size=1280x720"
+  testsrc_x264_boundary="testsrc=duration=2:size=128x128:rate=25"
+  testsrc_x264_yuv420p="testsrc=duration=2:size=128x128:rate=25,format=yuv420p"
 
-printf '%s\n' \
-  '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">' \
-  '  <rect width="64" height="64" fill="red"/>' \
-  '</svg>' > "$image_svg"
+  printf '%s\n' \
+    '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64">' \
+    '  <rect width="64" height="64" fill="red"/>' \
+    '</svg>' > "$image_svg"
 
-run_case "hwaccels" "" -hide_banner -hwaccels
-run_case "lavfi-sine-null" "" -v error -y -f lavfi -i sine=frequency=1000:duration=2 -f null -
-run_case "lavfi-sine-flac" "$audio_flac" -v error -y -f lavfi -i sine=frequency=1000:duration=2 "$audio_flac"
-run_case "lavfi-sine-pcm-wav" "$audio_wav" -v error -y -f lavfi -i sine=frequency=1000:duration=2 -c:a pcm_s16le "$audio_wav"
-run_case "lavfi-testsrc-null" "" -v error -y -f lavfi -i "$testsrc_hd" -f null -
-run_case "lavfi-testsrc-ffv1-mkv" "$video_ffv1_mkv" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v ffv1 "$video_ffv1_mkv"
-run_case "lavfi-testsrc-mkv" "$video_mkv" -v error -y -f lavfi -i "$testsrc_hd" "$video_mkv"
-run_case "jxl-encode" "$image_jxl" -v error -y -f lavfi -i testsrc=duration=1:size=64x64:rate=1 -frames:v 1 -c:v libjxl "$image_jxl"
-run_case "jxl-decode-null" "" -v error -c:v libjxl -i "$image_jxl" -frames:v 1 -f null -
-run_case "svg-librsvg-decode-null" "" -v error -c:v librsvg -i "$image_svg" -frames:v 1 -f null -
+  run_case "hwaccels" "" -hide_banner -hwaccels
+  run_case "lavfi-sine-null" "" -v error -y -f lavfi -i sine=frequency=1000:duration=2 -f null -
+  run_case "lavfi-sine-flac" "$audio_flac" -v error -y -f lavfi -i sine=frequency=1000:duration=2 "$audio_flac"
+  run_case "lavfi-sine-pcm-wav" "$audio_wav" -v error -y -f lavfi -i sine=frequency=1000:duration=2 -c:a pcm_s16le "$audio_wav"
+  run_case "lavfi-testsrc-null" "" -v error -y -f lavfi -i "$testsrc_hd" -f null -
+  run_case "lavfi-testsrc-ffv1-mkv" "$video_ffv1_mkv" -v error -y -f lavfi -i "$testsrc_x264_boundary" -c:v ffv1 "$video_ffv1_mkv"
+  run_case "lavfi-testsrc-mkv" "$video_mkv" -v error -y -f lavfi -i "$testsrc_hd" "$video_mkv"
+  run_case "jxl-encode" "$image_jxl" -v error -y -f lavfi -i testsrc=duration=1:size=64x64:rate=1 -frames:v 1 -c:v libjxl "$image_jxl"
+  run_case "jxl-decode-null" "" -v error -c:v libjxl -i "$image_jxl" -frames:v 1 -f null -
+  run_case "svg-librsvg-decode-null" "" -v error -c:v librsvg -i "$image_svg" -frames:v 1 -f null -
+else
+  consumer_args=()
+  if run_logged "ffmpeg-lgpl-consumer" bash "$CI_SCRIPT_ROOT/smoke/smoke-lgpl-consumer.sh" \
+    "$artifact_root" "$smoke_dir"; then
+    consumer_args=("$smoke_dir/lgpl-image-consumer")
+  else
+    failures=$((failures + 1))
+  fi
+  if ! run_logged "ffmpeg-lgpl-images" python3 "$CI_SCRIPT_ROOT/smoke/smoke-lgpl-images.py" \
+    "$ffmpeg_bin" "$CI_SCRIPT_ROOT/smoke/fixtures/images" "$smoke_dir" "$summary" "${consumer_args[@]}"; then
+    failures=$((failures + 1))
+  fi
+fi
 
 # x264 regression cases keep the default libx264 path under the same clean dyld
 # smoke gate as the rest of the GPL FFmpeg artifact.

@@ -58,6 +58,9 @@ jobs:
       - name: Checkout builder repository
         uses: actions/checkout@v6
 
+      - name: Check image-preview contracts
+        run: python3 -m unittest discover -s scripts/tests -v
+
       - name: Resolve NuGet cache mode
         id: nuget-cache-mode
         env:
@@ -141,7 +144,6 @@ jobs:
           bash builder/scripts/diagnostics/print-superbuild-log.sh vcpkg-tool
           bash builder/scripts/diagnostics/print-superbuild-log.sh vcpkg-static-ports
           bash builder/scripts/diagnostics/print-superbuild-log.sh custom-static-deps
-          bash builder/scripts/diagnostics/print-superbuild-log.sh vcpkg-lgpl-optional-ports
 
       - name: Save vcpkg binary cache
         if: ${{ always() && steps.source.outcome != 'skipped' }}

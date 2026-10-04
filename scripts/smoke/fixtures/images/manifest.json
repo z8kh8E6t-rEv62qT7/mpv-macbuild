@@ -1,0 +1,351 @@
+[
+  {
+    "file": "alpha.png",
+    "sha256": "e4ead31a717fd840a14b5d7581591a317b9c35e2d08b78e9b57e1b127d113e8e",
+    "width": 64,
+    "height": 64,
+    "frames": 1,
+    "tolerance": 0,
+    "pixels": [
+      {
+        "frame": 0,
+        "x": 16,
+        "y": 16,
+        "rgba": [
+          240,
+          32,
+          16,
+          255
+        ]
+      },
+      {
+        "frame": 0,
+        "x": 16,
+        "y": 48,
+        "rgba": [
+          16,
+          32,
+          240,
+          64
+        ]
+      }
+    ]
+  },
+  {
+    "file": "alpha.webp",
+    "sha256": "cdeb06381127df4715f1c05b5b02f698502822ed91e3f20f535acf6bc85e8443",
+    "width": 64,
+    "height": 64,
+    "frames": 1,
+    "tolerance": 0,
+    "pixels": [
+      {
+        "frame": 0,
+        "x": 16,
+        "y": 16,
+        "rgba": [
+          240,
+          32,
+          16,
+          255
+        ]
+      },
+      {
+        "frame": 0,
+        "x": 16,
+        "y": 48,
+        "rgba": [
+          16,
+          32,
+          240,
+          64
+        ]
+      }
+    ]
+  },
+  {
+    "file": "animated.gif",
+    "sha256": "dee4a3baac09ecc8ae2cf2874993f51878a8297a852cee8da249c716b49c39b3",
+    "width": 64,
+    "height": 64,
+    "frames": 2,
+    "tolerance": 0,
+    "pixels": [
+      {
+        "frame": 0,
+        "x": 16,
+        "y": 16,
+        "rgba": [
+          240,
+          32,
+          16,
+          255
+        ]
+      },
+      {
+        "frame": 1,
+        "x": 16,
+        "y": 16,
+        "rgba": [
+          16,
+          32,
+          240,
+          255
+        ]
+      }
+    ]
+  },
+  {
+    "file": "animated.png",
+    "sha256": "efa8354ce3c89abef7f025613291aa1816b7533ed8fb4fa93f918af249428f7d",
+    "width": 64,
+    "height": 64,
+    "frames": 2,
+    "tolerance": 0,
+    "pixels": [
+      {
+        "frame": 0,
+        "x": 16,
+        "y": 16,
+        "rgba": [
+          240,
+          32,
+          16,
+          255
+        ]
+      },
+      {
+        "frame": 1,
+        "x": 16,
+        "y": 16,
+        "rgba": [
+          16,
+          32,
+          240,
+          255
+        ]
+      }
+    ]
+  },
+  {
+    "file": "animated.webp",
+    "sha256": "df8995b675cd2939d2401d05a3e5993902f413396efaf57e49d1bb588a3aa211",
+    "width": 64,
+    "height": 64,
+    "frames": 2,
+    "tolerance": 0,
+    "pixels": [
+      {
+        "frame": 0,
+        "x": 16,
+        "y": 16,
+        "rgba": [
+          240,
+          32,
+          16,
+          255
+        ]
+      },
+      {
+        "frame": 1,
+        "x": 16,
+        "y": 16,
+        "rgba": [
+          16,
+          32,
+          240,
+          255
+        ]
+      }
+    ]
+  },
+  {
+    "file": "red-lzma.tiff",
+    "sha256": "13c4d1791106b4c1a3b94db6f82d0fdb00a7019642337e0d8d417c126da3bef9",
+    "width": 64,
+    "height": 64,
+    "frames": 1,
+    "tolerance": 0,
+    "pixels": [
+      {
+        "frame": 0,
+        "x": 16,
+        "y": 16,
+        "rgba": [
+          240,
+          32,
+          16,
+          255
+        ]
+      }
+    ]
+  },
+  {
+    "file": "red.avif",
+    "sha256": "9e8bdb47d0050e5fbf147b906d3c875c7071a79817d350554c1cedf73ed19100",
+    "width": 64,
+    "height": 64,
+    "frames": 1,
+    "tolerance": 4,
+    "pixels": [
+      {
+        "frame": 0,
+        "x": 16,
+        "y": 16,
+        "rgba": [
+          240,
+          32,
+          16,
+          255
+        ]
+      }
+    ]
+  },
+  {
+    "file": "red.bmp",
+    "sha256": "4e259fc694f3e8e20da115322633100868fbfe414ba99c68a2e6172d0808eced",
+    "width": 64,
+    "height": 64,
+    "frames": 1,
+    "tolerance": 0,
+    "pixels": [
+      {
+        "frame": 0,
+        "x": 16,
+        "y": 16,
+        "rgba": [
+          240,
+          32,
+          16,
+          255
+        ]
+      }
+    ]
+  },
+  {
+    "file": "red.exr",
+    "sha256": "b3f8abf5e651ef5d7d7dd269c7cbd5a8d5058fdbcb70771e617f28758019f031",
+    "width": 64,
+    "height": 64,
+    "frames": 1,
+    "tolerance": 4,
+    "pixels": [
+      {
+        "frame": 0,
+        "x": 16,
+        "y": 16,
+        "rgba": [
+          240,
+          32,
+          16,
+          255
+        ]
+      }
+    ]
+  },
+  {
+    "file": "red.heic",
+    "sha256": "14bebe50ba17ef348f60445772b5e3b5ecf6a282ae6578763d0991e68516465c",
+    "width": 64,
+    "height": 64,
+    "frames": 1,
+    "tolerance": 4,
+    "pixels": [
+      {
+        "frame": 0,
+        "x": 16,
+        "y": 16,
+        "rgba": [
+          240,
+          32,
+          16,
+          255
+        ]
+      }
+    ]
+  },
+  {
+    "file": "red.jpg",
+    "sha256": "353a3cadd08ed1e13f6bea389c67fac6b10921494c6e0e08ec33448e5be9eb5e",
+    "width": 64,
+    "height": 64,
+    "frames": 1,
+    "tolerance": 4,
+    "pixels": [
+      {
+        "frame": 0,
+        "x": 16,
+        "y": 16,
+        "rgba": [
+          240,
+          32,
+          16,
+          255
+        ]
+      }
+    ]
+  },
+  {
+    "file": "red.png",
+    "sha256": "71f162b5d99fed83e0492381f6be3d64d07d90c4eae8631b8843f29ef31032dd",
+    "width": 64,
+    "height": 64,
+    "frames": 1,
+    "tolerance": 0,
+    "pixels": [
+      {
+        "frame": 0,
+        "x": 16,
+        "y": 16,
+        "rgba": [
+          240,
+          32,
+          16,
+          255
+        ]
+      }
+    ]
+  },
+  {
+    "file": "red.tiff",
+    "sha256": "e969f9d1466512a8c55b24e3988a041ac46d4bfba91ff54b74dc4ee4b0fd3c4c",
+    "width": 64,
+    "height": 64,
+    "frames": 1,
+    "tolerance": 0,
+    "pixels": [
+      {
+        "frame": 0,
+        "x": 16,
+        "y": 16,
+        "rgba": [
+          240,
+          32,
+          16,
+          255
+        ]
+      }
+    ]
+  },
+  {
+    "file": "red.webp",
+    "sha256": "cfd874c06f292d10039ca5d39c8f1f65a1c57c51093dc6d6fa46a658491bc0b5",
+    "width": 64,
+    "height": 64,
+    "frames": 1,
+    "tolerance": 0,
+    "pixels": [
+      {
+        "frame": 0,
+        "x": 16,
+        "y": 16,
+        "rgba": [
+          240,
+          32,
+          16,
+          255
+        ]
+      }
+    ]
+  }
+]

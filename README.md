@@ -102,7 +102,7 @@ Release behavior:
   overlay ports under `cmake/ports-overlay/` for macOS-specific fixes, then
   builds custom source packages for dyphire/mpv-specific needs.
 - vcpkg itself is pinned to commit
-  `56bb2411609227288b70117ead2c47585ba07713`, so official port recipes do not
+  `5dd2e1600d049b498ff9fb9fe15997533ae0c804`, so official port recipes do not
   float with `microsoft/vcpkg` `master`.
 - vcpkg binary packages are cached through GitHub Actions' cache service using
   a filesystem binary cache at `$RUNNER_TEMP/vcpkg-binary-cache`. The workflow
@@ -170,10 +170,34 @@ Release behavior:
   `libiconv` port is an empty wrapper on this target. LuaSocket, VapourSynth,
   and frei0r are source-built plugin/runtime exceptions; VapourSynth keeps
   `libvsscript.dylib` dynamic but rewrites it to `@rpath` for FFmpeg and mpv.
-- The FFmpeg command-line package intentionally carries the seven shared
+- The GPLv3+nonfree FFmpeg command-line package intentionally carries the seven shared
   FFmpeg libraries. Vulkan-loader and MoltenVK remain the non-plugin
   third-party runtime exceptions and are bundled where required.
 - FFmpeg is configured with `--enable-nonfree` for `libfdk-aac`.
+
+The vcpkg registry is pinned to
+`5dd2e1600d049b498ff9fb9fe15997533ae0c804`. Registry-managed dependencies,
+including their transitive dependencies and port revisions, follow that snapshot.
+Local overlays take precedence and pin these versions:
+
+| Overlay | Version |
+| --- | --- |
+| libaribcaption | 1.1.2 |
+| libbluray | 1.5.1 |
+| librsvg | 2.63.2 |
+| libunibreak | 8.0 |
+| libvmaf | 3.2.1 |
+| libvpx | 1.17.0 |
+| openal-soft | 1.25.2 |
+| pango | 1.58.2 |
+| vvenc | 1.14.0 |
+| x264 | 0.165.3222 (`b35605ace3ddf7c1a5d67a2eb553f034aef41d55`) |
+
+The libass threading fork remains pinned to
+`09283f57d303af9a71ed80c83fe6242e4f035486`; MuJS 1.3.8, rubberband 4.0.0,
+uchardet 0.0.8 and Xvid 1.3.7 also retain their existing pins. Components already
+built from unpinned branches retain that behavior. The Pango overlay uses the
+stable 1.x API; the incompatible 1.90 development series is excluded.
 
 Custom source-built and overlay-managed components include:
 
@@ -184,9 +208,9 @@ Custom source-built and overlay-managed components include:
   overlapping Rust runtime symbols so FFmpeg can link libplacebo/libdovi,
   `--enable-librav1e`, and `--enable-librsvg` together without hiding any
   public C API.
-- `Vulkan-Headers` from `vulkan-sdk-1.4.350.0`, installed into the source
+- `Vulkan-Headers` from `vulkan-sdk-1.4.363.0`, installed into the source
   prefix with the matching CMake package config and Vulkan registry files.
-- `Vulkan-Loader` from `vulkan-sdk-1.4.350.0`, built as the bundled Vulkan
+- `Vulkan-Loader` from `vulkan-sdk-1.4.363.0`, built as the bundled Vulkan
   loader runtime for macOS against the source-built matching headers.
 - `MoltenVK` from HEAD, used both as a source-built static input and bundled
   runtime component.
@@ -205,12 +229,13 @@ Custom source-built and overlay-managed components include:
   only; the unrelated `cd-paranoia` CLI is not part of the FFmpeg dependency
   surface.
 - `vvenc` now comes from a repo-local vcpkg overlay that keeps the build on
-  `1.7.0`, disables x86 SIMD on arm64, and installs only the library pieces
-  FFmpeg needs.
+  `1.14.0`, disables x86 SIMD on arm64, and uses upstream library-only,
+  system-JSON and no-Werror options. The loop-filter template instantiation fix
+  remains; pkg-config runtime flags now come from upstream compiler detection.
 - `libmysofa` now comes from the pinned vcpkg registry rather than a separate
   source-prefix build.
-- `libunibreak` now comes from a repo-local vcpkg overlay that preserves the
-  pinned registry source version while installing pkg-config metadata for the
+- `libunibreak` comes from a repo-local vcpkg overlay pinned to `8.0`,
+  installing pkg-config metadata for the
   libass overlay and CI audit.
 - `libiconv` uses Apple's system `libiconv` on macOS. mpv keeps `iconv`
   enabled with explicit Meson-stage link flags, and FFmpeg keeps
@@ -230,21 +255,41 @@ Artifacts:
   rooted at `ffmpeg-gplv3-nonfree/`. It includes the three command-line tools,
   seven shared FFmpeg libraries, headers, relocatable pkg-config files, and
   their runtime closure; static archives remain internal for the mpv build.
-- `ffmpeg-lgpl-macos15-arm64.tar.xz`: strict LGPL FFmpeg package rooted at
-  `ffmpeg-lgpl/`, with only the `ffmpeg` command-line executable, the same
-  shared-library layout, and mandatory JXL/SVG decoding through libjxl and
-  librsvg 2.62.3. The workflow uploads both FFmpeg Actions artifacts immediately
-  after `Build FFmpeg`, then extracts and smoke-tests both delivered tarballs in
-  a clean dyld environment before auditing runtime dependencies. Both profiles
-  exercise common built-in codecs plus real JXL encode/decode and SVG decode;
-  the GPLv3+nonfree profile additionally runs the x264 default-encoding
-  regression matrix so AArch64 assembly/runtime issues are caught before mpv
-  starts. Later smoke, audit, or mpv failures do not remove the FFmpeg tarballs
-  from the run.
+- `ffmpeg-lgpl-macos15-arm64.tar.xz`: LGPL image-preview SDK rooted at
+  `ffmpeg-lgpl/`. Includes `ffmpeg`, five shared libraries (`avcodec`, `avformat`,
+  `avutil`, `swscale`, `avfilter`), matching headers, relocatable pkg-config files,
+  the required compiler runtime, dependency licenses, configure results and the
+  exact source commit. zlib, dav1d and liblzma are linked statically from the
+  pinned vcpkg dependency prefix (zlib 1.3.2, dav1d 1.5.4 and liblzma 5.8.4).
+  Supported image inputs are JPEG, PNG/APNG, GIF, static/animated WebP, AVIF,
+  BMP, TIFF (including LZMA compression), EXR and HEVC-based HEIC/HEIF, within
+  FFmpeg's native container/decoder capabilities. HEIF extensions unsupported by
+  FFmpeg are not supplied by libheif. Both the native `webp_anim` decoder and
+  demuxer are mandatory; an older `ffmpeg_ref` without them fails configuration
+  validation instead of silently losing animation support.
+  Only local file protocol I/O and custom AVIO are supported. There are no
+  network protocols, hardware decoders, audio codecs, devices, ffprobe, ffplay,
+  JXL or SVG decoders. The `ffmpeg` CLI requires `avfilter` and its automatically
+  selected filters (including a few audio filters, without audio codecs);
+  `scale` and the rawvideo encoder/muxer support RGBA output. Other encoders and
+  muxers are disabled. This is a shared SDK; `pkg-config --static` linking is not
+  supported because private dependency archives are not shipped.
+
 - `package-audit-<mpv-ref>-<ffmpeg-ref>`: package and feature audit.
 - `full-audit-<mpv-ref>-<ffmpeg-ref>`: package audit plus FFmpeg and bundle
   `otool` data; when FATE is enabled, it also contains the combined FATE
   summary, per-profile command logs, and complete failing-test lists.
+
+Both FFmpeg tarballs are uploaded immediately after `Build FFmpeg`, then
+extracted and tested with dyld overrides cleared. The GPL profile keeps the
+existing audio/video, JXL/SVG and x264 regression tests. The LGPL profile decodes
+checked-in synthetic images into RGBA, checking dimensions, complete animation
+frame counts, byte counts and pixels, including transparency and LZMA TIFF.
+Its smoke job also compiles a small C consumer using only the extracted SDK,
+checks header/runtime versions, and decodes the same inputs through custom
+AVIO. Corrupt/truncated files and unsupported SVG must fail. Logs include the
+commands and failures; FATE remains optional and diagnostic-only. Later smoke,
+audit or mpv failures do not remove the uploaded tarballs.
 
 ## Dyphire alignment
 
@@ -283,7 +328,7 @@ applicable.
 | Package | macOS retention | Notes |
 | --- | --- | --- |
 | mpv | Source | Checked out from `mpv-player/mpv` at `mpv_ref`; linked with static third-party deps where possible. |
-| FFmpeg | Source static + shared | The GPLv3+nonfree profile keeps static archives internally for mpv while its command-line tools link the seven shared FFmpeg libraries. The independent public LGPL profile is shared-only. |
+| FFmpeg | Source static + shared | The GPLv3+nonfree profile keeps static archives internally for mpv while its command-line tools link the seven shared FFmpeg libraries. The independent LGPL image profile ships five shared libraries and the ffmpeg CLI; zlib, dav1d and liblzma are its only external codec/compression dependencies. |
 | libass | vcpkg overlay static | Repo-local overlay keeps `rcombs/libass` `threading` plus the dyphire subtitle patch while moving the package onto the vcpkg cache path. |
 | libplacebo | Source static | Built from HEAD with Vulkan, shaderc, LCMS, dovi, and libdovi enabled, plus temporary upstream MR !850/!852 cherry-picks for dyphire alignment. |
 | vulkan-header | Source static/header | `Vulkan-Headers` is source-built from the same SDK tag as `Vulkan-Loader` and installed into the source prefix. |
@@ -338,9 +383,9 @@ applicable.
 | snappy | Source static/FFmpeg | Audited as `--enable-libsnappy`. |
 | librtmp | Source static/FFmpeg | Audited as `--enable-librtmp`. |
 | libtheora | Source static/FFmpeg | Audited as `--enable-libtheora`. |
-| libvmaf | vcpkg overlay static/FFmpeg | Audited as `--enable-libvmaf`; overlay keeps vcpkg `3.1.0` while renaming internal `close` callbacks to avoid local `_close` symbol collisions. |
+| libvmaf | vcpkg overlay static/FFmpeg | Audited as `--enable-libvmaf`; overlay pins `3.2.1` while renaming internal `close` callbacks to avoid local `_close` symbol collisions. |
 | librsvg | Source static/FFmpeg | Audited as `--enable-librsvg`. |
-| libvvenc | vcpkg overlay static/FFmpeg | Repo-local overlay keeps `1.7.0`, disables x86 SIMD on arm64, and provides the FFmpeg-facing library artifacts. |
+| libvvenc | vcpkg overlay static/FFmpeg | Repo-local overlay keeps `1.14.0`, disables x86 SIMD on arm64, and provides the FFmpeg-facing library artifacts. |
 | VideoToolbox | Apple system dynamic/FFmpeg/mpv | FFmpeg and mpv VideoToolbox paths are enabled and audited. |
 | AudioToolbox | Apple system dynamic/FFmpeg | FFmpeg AudioToolbox support is enabled and audited. |
 | amf-headers | Not applicable | AMD AMF is Windows-specific here; macOS uses VideoToolbox. |

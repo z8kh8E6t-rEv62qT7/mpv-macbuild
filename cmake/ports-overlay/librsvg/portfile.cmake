@@ -1,8 +1,8 @@
 vcpkg_download_distfile(
     ARCHIVE
-    URLS "https://download.gnome.org/sources/librsvg/2.62/librsvg-2.62.3.tar.xz"
-    FILENAME "librsvg-2.62.3.tar.xz"
-    SHA512 c2c0f28268e47ec78f98d86cd2536be3e0c3706039b04ac2286d87a6ac7ee0dfb75a4adc4f8bd9c3b6b1f5c94fecafc6d84dfe67f7e4ebfad59f7227e509300d
+    URLS "https://download.gnome.org/sources/librsvg/2.63/librsvg-2.63.2.tar.xz"
+    FILENAME "librsvg-2.63.2.tar.xz"
+    SHA512 2d4d48d3cf8db34ecc8a26ce689bc2662d9d909e796299602e81c907e9b72a14a865cbd82c58d498316e73001e2242b44a56e52e57c0b38bbee74e38c0e314a9
 )
 
 vcpkg_extract_source_archive(
