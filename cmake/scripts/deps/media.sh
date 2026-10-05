@@ -127,8 +127,13 @@ build_libcdio() {
 
 build_libvidstab() {
   clone_or_update https://github.com/georgmartius/vid.stab.git "$SOURCE_ROOT/vid.stab"
+  # Keep vid.stab out of LTO to avoid the macOS vs_log link failure in FFmpeg.
+  # Disable both CMake IPO and the LTO flags inherited from the environment.
   cmake_static_install "$SOURCE_ROOT/vid.stab" "$BUILD_ROOT/vid.stab" \
-    -DUSE_OMP=OFF
+    -DUSE_OMP=OFF \
+    -DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF \
+    -DCMAKE_C_FLAGS="$CFLAGS -fno-lto" \
+    -DCMAKE_CXX_FLAGS="$CXXFLAGS -fno-lto"
   remove_dynamic_artifacts
   pkg-config --exists vidstab
 }
