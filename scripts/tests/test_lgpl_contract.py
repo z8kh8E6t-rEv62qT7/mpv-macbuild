@@ -72,35 +72,43 @@ class ImageContractTests(unittest.TestCase):
         decoders = "apng,bmp,exr,gif,hevc,libdav1d,mjpeg,png,tiff,webp,webp_anim"
         parsers = "av1,bmp,gif,hevc,mjpeg,png,webp"
         demuxers = "apng,gif,image2,image2pipe,image_bmp_pipe,image_exr_pipe,image_jpeg_pipe,image_png_pipe,image_tiff_pipe,image_webp_pipe,mov,webp_anim"
-        values = {}
+        components = {}
         for kind, names in {
             "DECODER": decoders + ",vp8", "PARSER": parsers, "DEMUXER": demuxers,
             "ENCODER": "rawvideo", "MUXER": "rawvideo", "PROTOCOL": "file",
             "FILTER": "aformat,anull,atrim,crop,format,hflip,null,rotate,transpose,trim,vflip,scale",
         }.items():
-            values.update({name.upper() + "_" + kind: "1" for name in names.split(",")})
+            components.update({name.upper() + "_" + kind: "1" for name in names.split(",")})
+        values = {"FRAME_THREAD_ENCODER": "1"}
         for name in "AVCODEC AVFORMAT AVUTIL SWSCALE AVFILTER FFMPEG ZLIB LZMA LIBDAV1D".split():
             values[name] = "1"
         for name in "GPL VERSION3 NONFREE NETWORK AVDEVICE SWRESAMPLE FFPROBE FFPLAY LIBJXL LIBRSVG LIBAOM LIBWEBP BZLIB ICONV VIDEOTOOLBOX AUDIOTOOLBOX".split():
             values[name] = "0"
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            (root / "config_components.h").touch()
             command = [sys.executable, str(ROOT / "scripts/audit/audit-lgpl-config.py"),
                        str(root), decoders, parsers, demuxers]
 
-            def audit(configuration):
-                (root / "config.h").write_text("".join(
-                    f"#define CONFIG_{key} {value}\n" for key, value in configuration.items()))
+            def audit(configuration, component_configuration):
+                for filename, entries in (("config.h", configuration),
+                                          ("config_components.h", component_configuration)):
+                    (root / filename).write_text("".join(
+                        f"#define CONFIG_{key} {value}\n" for key, value in entries.items()))
                 return subprocess.run(command, capture_output=True, text=True).returncode
 
-            self.assertEqual(audit(values), 0)
+            self.assertEqual(audit(values, components), 0)
+            self.assertEqual(audit(dict(values, FRAME_THREAD_ENCODER="0"), components), 0)
             for name, value in (("WEBP_ANIM_DECODER", "0"), ("WEBP_ANIM_DEMUXER", "0"),
-                                ("LIBDAV1D", "0"), ("GPL", "1"), ("LIBJXL", "1"),
                                 ("AAC_DECODER", "1"), ("PNG_ENCODER", "1"),
                                 ("HTTP_PROTOCOL", "1"), ("HEVC_VIDEOTOOLBOX_HWACCEL", "1")):
                 with self.subTest(component=name):
-                    self.assertNotEqual(audit(dict(values, **{name: value})), 0)
+                    self.assertNotEqual(audit(values, dict(components, **{name: value})), 0)
+            for name, value in (("LIBDAV1D", "0"), ("GPL", "1"), ("LIBJXL", "1")):
+                with self.subTest(feature=name):
+                    self.assertNotEqual(audit(dict(values, **{name: value}), components), 0)
+            # A definition in the wrong header cannot satisfy or override an audit.
+            self.assertNotEqual(audit(dict(values, **components), {}), 0)
+            self.assertNotEqual(audit(dict(values, GPL="1"), dict(components, GPL="0")), 0)
 
     def test_package_profiles_keep_gpl_contract(self):
         command = ['bash', '-c', 'source "$1"; ffmpeg_package_profile "$2"; '

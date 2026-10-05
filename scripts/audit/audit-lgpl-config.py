@@ -5,13 +5,19 @@ import re
 import sys
 
 build = pathlib.Path(sys.argv[1])
-config = {}
-for name in ("config.h", "config_components.h"):
-    config.update(re.findall(r"^#define CONFIG_(\w+) ([01])$", (build / name).read_text(), re.M))
+
+
+def read_config(name):
+    return dict(re.findall(r"^#define CONFIG_(\w+) ([01])$", (build / name).read_text(), re.M))
+
+
+config = read_config("config.h")
+# Internal features such as FRAME_THREAD_ENCODER are not registered components.
+components = read_config("config_components.h")
 
 
 def exact_components(kind, expected):
-    actual = {key.removesuffix("_" + kind).lower() for key, value in config.items()
+    actual = {key.removesuffix("_" + kind).lower() for key, value in components.items()
               if key.endswith("_" + kind) and value == "1"}
     if actual != expected:
         raise SystemExit(f"{kind}: missing={sorted(expected - actual)}, unexpected={sorted(actual - expected)}")
